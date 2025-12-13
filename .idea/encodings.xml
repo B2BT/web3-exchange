@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/exchange-asset/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-auth/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-chain/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-gateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-match/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-monitor/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-notify/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-order/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/exchange-risk/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+  </component>
+</project>
