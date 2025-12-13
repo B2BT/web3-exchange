@@ -10,5 +10,6 @@
 
     <!-- 公共模块 -->
     <artifactId>exchange-common</artifactId>
+    <description>不提供服务，只存放 DTO、常量、枚举、工具类，被其他模块引用。</description>
 
 </project>

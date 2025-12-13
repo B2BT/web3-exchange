@@ -8,7 +8,8 @@
         <version>1.0.0</version>
     </parent>
 
-    <!-- 公共模块 -->
+    <!-- 链接区块链模块 -->
     <artifactId>exchange-chain</artifactId>
+    <description>负责监听链上充值、提现上链、调用智能合约，多链支持。</description>
 
 </project>

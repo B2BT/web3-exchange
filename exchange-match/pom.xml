@@ -8,7 +8,8 @@
         <version>1.0.0</version>
     </parent>
 
-    <!-- 公共模块 -->
+    <!-- 撮合引擎模块 -->
     <artifactId>exchange-match</artifactId>
+    <description>撮合引擎模块，维护买卖盘、撮合成交，生成成交记录，高性能内存计算，通常通过 MQ 或 TCP 通信。</description>
 
 </project>

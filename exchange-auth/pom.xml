@@ -8,7 +8,8 @@
         <version>1.0.0</version>
     </parent>
 
-    <!-- 公共模块 -->
+    <!-- 鉴权模块 -->
     <artifactId>exchange-auth</artifactId>
+    <description>认证鉴权中心，负责登录、登出、JWT/OAuth2 Token、权限校验、单点登录。</description>
 
 </project>

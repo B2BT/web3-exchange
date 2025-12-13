@@ -8,7 +8,8 @@
         <version>1.0.0</version>
     </parent>
 
-    <!-- 公共模块 -->
+    <!-- 订单模块 -->
     <artifactId>exchange-order</artifactId>
+    <description>订单模块，处理用户下单、撤单、订单状态管理，但不直接操作余额，调用资产模块。</description>
 
 </project>
