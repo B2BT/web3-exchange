@@ -30,7 +30,7 @@
         <!--  中间件  -->
         <mysql.version>8.0.33</mysql.version>
         <redis.version>7.2.4</redis.version>
-        <mybatis-plus.version>3.5.5</mybatis-plus.version>
+        <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <druid.version>1.2.20</druid.version>
         <lombok.version>1.18.30</lombok.version>
 
@@ -99,7 +99,7 @@
             <!-- MyBatis-Plus -->
             <dependency>
                 <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
 

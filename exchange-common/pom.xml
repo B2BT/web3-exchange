@@ -16,7 +16,7 @@
         <!-- MyBatis-Plus核心依赖 -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
         <!-- SpringDoc（Spring Boot 3+推荐） -->
@@ -48,7 +48,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- 工具类 -->
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

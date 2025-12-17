@@ -63,7 +63,7 @@ public abstract class BaseEntity implements Serializable {
      * 0=未删除，1=已删除
      */
     @TableLogic
-    private Integer isDelete;
+    private Integer isDeleted;
 
     /**
      * 乐观锁版本号
@@ -76,11 +76,11 @@ public abstract class BaseEntity implements Serializable {
      */
     private Long tenantId;
 
-    /**
+/*    *//**
      * 扩展字段（JSON格式）
-     */
+     *//*
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private String extData;
+    private String extData;*/
 
     /**
      * 获取实体表名（用于动态表明等场景）
