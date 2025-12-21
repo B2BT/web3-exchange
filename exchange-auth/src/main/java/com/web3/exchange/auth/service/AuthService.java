@@ -3,6 +3,7 @@ package com.web3.exchange.auth.service;
 import com.web3.exchange.auth.dto.request.LoginRequest;
 import com.web3.exchange.auth.dto.response.AuthResponse;
 import com.web3.exchange.auth.dto.response.TokenResponse;
+import com.web3.exchange.auth.dto.response.UserInfoResponse;
 
 public interface AuthService {
 
@@ -13,4 +14,6 @@ public interface AuthService {
     void logout(String accessToken);
 
     boolean validateToken(String token);
+
+    UserInfoResponse getUserFromToken(String accessToken);
 }

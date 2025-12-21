@@ -146,6 +146,19 @@ public class AuthServiceImpl implements AuthService {
         return jwtTokenProvider.validateToken(token);
     }
 
+    /**
+     * 获取当前用户
+     * @param accessToken
+     * @return
+     */
+    @Override
+    public UserInfoResponse getUserFromToken(String accessToken) {
+        if(validateToken(accessToken)){
+
+        }
+        return null;
+    }
+
 
     /**
      * 异步记录登录日志

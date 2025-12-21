@@ -3,4 +3,27 @@ server:
 
 spring:
   application:
-    name: exchange-common
+    name: exchange-gateway
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+
+    gateway:
+      discovery:
+        locator:
+          enabled: true # 开启Nacos自动发现服务
+          lower-case-service-id: true
+      routes:
+        - id: exchange-auth
+          uri: lb://exchange-auth # 通过Nacos进行负载均衡
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=2 # 去掉 /api/auth
+
+        - id: exchange-user
+          uri: lb://exchange-user
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=2
