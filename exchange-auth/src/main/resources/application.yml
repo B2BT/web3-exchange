@@ -1,6 +1,13 @@
 server:
-  port: 8101
+  port: 8103
 
 spring:
   application:
-    name: exchange-common
+    name: exchange-gateway
+  cloud:
+jwt:
+  secret: ${JWT_SECRET}
+  #短（15～30 分钟）
+  access-token-expiration: 3600
+  # 长（7～30 天）
+  refresh-token-expiration: 10000
