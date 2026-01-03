@@ -33,6 +33,9 @@
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <druid.version>1.2.20</druid.version>
         <lombok.version>1.18.30</lombok.version>
+        <!-- Nacos -->
+        <nacos.version>2022.0.0.0</nacos.version>
+
 
         <!-- Web3 -->
         <web3j.version>4.10.3</web3j.version>
@@ -43,6 +46,14 @@
     </properties>
     <dependencyManagement>
         <dependencies>
+            <!-- Nacos -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+                <version>${nacos.version}</version> <!-- 请根据 Spring Boot 版本选择对应版本 -->
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>

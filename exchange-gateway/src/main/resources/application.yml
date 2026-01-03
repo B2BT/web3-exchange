@@ -1,6 +1,49 @@
+# application.yml
 server:
-  port: 8101
+  port: 8080
 
 spring:
   application:
-    name: exchange-common
+    name: gateway-service
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+            - name: AuthFilter
+              args:
+                requiredRoles: ADMIN,USER
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=1
+            - name: AuthFilter
+              args:
+                requiredRoles: USER
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 0
+
+jwt:
+  secret: your-256-bit-secret-key-for-jwt-signing-change-this-in-production

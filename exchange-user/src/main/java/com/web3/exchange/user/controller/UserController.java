@@ -25,6 +25,4 @@ public class UserController {
         List<User> list = userService.getUserList();
         return Result.success(list);
     }
-
-
 }
