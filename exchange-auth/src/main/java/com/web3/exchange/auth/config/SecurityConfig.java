@@ -36,10 +36,8 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationConverter jwtAuthenticationConverter;
 
     /**
      * 请求白名单
@@ -82,7 +80,7 @@ public class SecurityConfig {
                 // Spring Security的 GrantedAuthority（权限/角色）
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> oauth2
-                                .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter)
+                                .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
                 );
         // todo 完善异常处理

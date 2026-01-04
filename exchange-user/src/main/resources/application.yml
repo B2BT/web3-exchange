@@ -3,13 +3,25 @@ server:
 spring:
   application:
     name: exchange-user
+  config:
+    import: "nacos:exchange-user.yaml"
+
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      discovery:
+        namespace: public
+        group: DEFAULT_GROUP
+      config:
+        namespace: public
+        group: DEFAULT_GROUP
   datasource:
     # Druid连接池配置
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: 123456
+    password: root
 
     # 连接池配置
     druid:
