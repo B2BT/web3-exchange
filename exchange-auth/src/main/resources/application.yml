@@ -15,7 +15,9 @@ spring:
         namespace: public
         group: DEFAULT_GROUP        # 默认分组
         file-extension: yaml        # 必须指定为 yaml，默认为 properties
-
+  # auth 服务不连数据库 → 直接禁用 DataSource
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
 
 jwt:
   secret: "your-very-secure-secret-key-at-least-32-characters-long"
