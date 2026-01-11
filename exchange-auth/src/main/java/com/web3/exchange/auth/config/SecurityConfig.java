@@ -1,21 +1,18 @@
 package com.web3.exchange.auth.config;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -43,12 +40,23 @@ public class SecurityConfig {
      * 请求白名单
      */
     private static final String[] WHITE_LIST = {
-            "/swagger-ui/**",
-            "/v3/api-docs/**",
+            // 认证相关
             "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/captcha/**",
+            "/api/auth/password/forgot",
+            "/api/auth/password/reset",
             "/api/auth/refresh",
-            "/api/auth/captcha",
-            "/actuator/health"
+            "/api/auth/validate",
+
+            // 文档
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+
+            // 健康检查
+            "/actuator/health",
+            "/actuator/info"
     };
 
     /**
@@ -74,15 +82,10 @@ public class SecurityConfig {
                 // 定义接口访问权限。登陆、刷新Token、验证码以及健康检查接口设为白名单，无需鉴权。
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST).permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().permitAll()
+                );
                 // 将后端作为OAuth2资源服务器。配置了JWT校验，并使用了转换器将JWT中的Claim解析成
                 // Spring Security的 GrantedAuthority（权限/角色）
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> oauth2
-                                .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter())
-                        )
-                );
         // todo 完善异常处理
         return http.build();
     }
@@ -116,6 +119,29 @@ public class SecurityConfig {
     }
 
     /**
+     * 认证管理器
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+
+    /**
+     * 认证提供者
+     */
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider(
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        provider.setHideUserNotFoundExceptions(false);
+        return provider;
+    }
+
+    /**
      * 从JWT令牌中提取权限并将其映射到Spring Security的权限模型中。
      *
      * @return
@@ -136,16 +162,7 @@ public class SecurityConfig {
         return converter;
     }
 
-    /**
-     * 安全基础：密码编码器
-     * 必须定义一个加密Bean来验证数据库的加密密码
-     *
-     * @return
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
-    }
+
 
     /**
      * 认证流程的总指挥官
@@ -153,14 +170,24 @@ public class SecurityConfig {
      * 它的唯一任务是：接收一个包含用户名/密码（或token）的认证请求，并验证其是否合法。
      * 没有他，登陆接口无法手动触发验用户名和密码是否匹配。
      * 有了它，可以在Controller中调用它来完成登陆请求
-     * @param authenticationConfiguration
      * @return
      * @throws Exception
      */
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+            HttpSecurity http,
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) throws Exception {
+
+        AuthenticationManagerBuilder authenticationManagerBuilder =
+                http.getSharedObject(AuthenticationManagerBuilder.class);
+
+        // 直接配置，避免代理
+        authenticationManagerBuilder
+                .userDetailsService(userDetailsService)
+                .passwordEncoder(passwordEncoder);
+
+        return authenticationManagerBuilder.build();
     }
 
     /**

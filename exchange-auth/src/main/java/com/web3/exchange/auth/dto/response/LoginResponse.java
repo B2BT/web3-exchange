@@ -20,7 +20,7 @@ import jakarta.validation.constraints.NotBlank;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "认证响应")
-public class AuthResponse implements Serializable {
+public class LoginResponse implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -39,6 +39,9 @@ public class AuthResponse implements Serializable {
 
     @Schema(description = "过期时间(秒)", example = "3600")
     private Long expiresIn;
+
+    @Schema(description = "刷新令牌过期时间(秒)", example = "72000")
+    private Long refreshExpiresIn;
 
     @Schema(description = "用户信息")
     private UserInfoResponse userInfo;
@@ -67,21 +70,21 @@ public class AuthResponse implements Serializable {
     private LocalDateTime tokenExpireTime;
 
     // Builder 方法
-    public static AuthResponseBuilder builder() {
-        return new AuthResponseBuilder();
+    public static LoginResponseBuilder builder() {
+        return new LoginResponseBuilder();
     }
 
-    public static AuthResponse of(String accessToken, UserInfoResponse userInfo) {
-        return AuthResponse.builder()
+    public static LoginResponse of(String accessToken, UserInfoResponse userInfo) {
+        return LoginResponse.builder()
                 .accessToken(accessToken)
                 .userInfo(userInfo)
                 .build();
     }
 
 
-    public static AuthResponse of(String accessToken, String refreshToken,
-                                  UserInfoResponse userInfo, List<String> authorities) {
-        return AuthResponse.builder()
+    public static LoginResponse of(String accessToken, String refreshToken,
+                                   UserInfoResponse userInfo, List<String> authorities) {
+        return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .userInfo(userInfo)

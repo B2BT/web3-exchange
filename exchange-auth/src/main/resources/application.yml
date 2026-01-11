@@ -1,9 +1,27 @@
 server:
   port: 8102
+  servlet:
+    context-path: /auth
+  shutdown: graceful
+  graceful:
+    timeout: 30s
 spring:
   application:
     name: exchange-auth # 必须配置，对应 Nacos 中的 Data ID 前缀
-  config:
+
+  # Redis
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+      shutdown-timeout: 100ms
+  cig:
     import: "nacos:exchange-auth.yaml"
   cloud:
     nacos:
@@ -18,8 +36,71 @@ spring:
   # auth 服务不连数据库 → 直接禁用 DataSource
   autoconfigure:
     exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  # Feign
+  feign:
+    client:
+      config:
+        default:
+          connect-timeout: 5000
+          read-timeout: 10000
+    # 安全配置
+    security:
+      # 密码编码器
+      password:
+        encoder:
+          type: bcrypt
+          strength: 10
 
+      # 登录失败限制
+      login:
+        max-failures: 5
+        lock-minutes: 30
+        ip-limit: 10
+        ip-window: 60
+# JWT配置
 jwt:
-  secret: "your-very-secure-secret-key-at-least-32-characters-long"
-  access-token-expiration: 3600000 # 這裡的單位通常是毫秒 (例如 1 小時)
-  refresh-token-expiration: 604800000 # 這裡的單位通常是毫秒 (例如 7 天)
+  # 密钥（生产环境使用环境变量）
+  secret: ${JWT_SECRET:mySuperSecretKeyForJWTTokenGenerationInSpringCloudProject2024}
+  # 签发者
+  issuer: web3-auth-service
+  # 令牌头配置
+  header: Authorization
+  refresh-header: X-Refresh-Token
+  prefix: "Bearer "
+  # Access Token配置
+  access-token:
+    expiration: 7200        # 2小时（秒）
+    refresh-threshold: 300  # 5分钟内过期时提示刷新
+  # Refresh Token配置
+  refresh-token:
+    expiration: 2592000     # 30天（秒）
+    max-usage: 10           # 最大使用次数
+    single-use: false       # 是否单次使用
+
+# 验证码
+captcha:
+  enabled: true
+  type: math
+  length: 4
+  width: 130
+  height: 48
+  expire-time: 300
+  anti-brush-interval: 60
+
+  # 最简SpringDoc配置
+  springdoc:
+    api-docs:
+      enabled: true
+      path: /v3/api-docs
+    swagger-ui:
+      enabled: true
+      path: /swagger-ui.html  # Swagger UI地址
+# 日志
+logging:
+  level:
+    com.web3.exchange.auth: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/auth-service.log

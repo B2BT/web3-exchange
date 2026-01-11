@@ -1,6 +1,7 @@
 package com.web3.exchange.common.model;
 
 import com.web3.exchange.common.constant.ErrorCode;
+import com.web3.exchange.common.exception.BaseException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import java.io.Serializable;
@@ -16,6 +17,9 @@ public class Result<T> implements Serializable {
     private T data;
     @Schema(description = "时间戳", example = "1672502400000")
     private Long timestamp = System.currentTimeMillis();
+    @Schema(description = "请求ID")
+    private String requestId;
+
 
     public Result() {
     }
@@ -40,6 +44,9 @@ public class Result<T> implements Serializable {
     // =============== 失败响应 ================
     public static <T> Result<T> error(String message) {
         return error(500, message);
+    }
+    public static <T> Result<T> error(BaseException e) {
+        return error(e.getMessage());
     }
     public static <T> Result<T> error(Integer code, String message) {
         return new Result<>(code, message,null);

@@ -1,7 +1,8 @@
 package com.web3.exchange.common.user;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -13,6 +14,9 @@ import java.util.Date;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserDetailDTO extends UserDTO {
     private String password;
     private String salt;

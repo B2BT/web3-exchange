@@ -1,0 +1,35 @@
+# application-exception.yml
+exception:
+  # 异常处理配置
+  handler:
+    enabled: true
+    show-detail: false  # 生产环境设为false
+    log-stack-trace: true
+
+  # 异常监控配置
+  monitor:
+    enabled: true
+    threshold: 10  # 阈值
+    window: 60     # 时间窗口(秒)
+
+  # 告警配置
+  alert:
+    enabled: true
+    channels:
+      - log
+      - email
+    email:
+      recipients:
+        - admin@web3exchange.com
+    webhook:
+      url: ${ALERT_WEBHOOK_URL}
+
+  # 自定义HTTP状态码映射
+  status:
+    mapping:
+      business_exception: 400
+      auth_exception: 401
+      permission_exception: 403
+      not_found_exception: 404
+      validation_exception: 422
+      service_exception: 500

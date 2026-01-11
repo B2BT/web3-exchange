@@ -13,6 +13,18 @@
     <description>不提供服务，只存放 DTO、常量、枚举、工具类，被其他模块引用。</description>
 
     <dependencies>
+
+        <!-- Redis 缓存 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <!-- 用于全局异常处理返回 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
         <!-- MyBatis-Plus核心依赖 -->
         <dependency>
             <groupId>com.baomidou</groupId>
@@ -65,6 +77,10 @@
             <artifactId>mybatis-plus-extension</artifactId>
             <version>3.5.5</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-core</artifactId>
         </dependency>
     </dependencies>
 

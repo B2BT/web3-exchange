@@ -27,6 +27,8 @@
         <spring.cloud.alibaba.version>2023.0.1.0</spring.cloud.alibaba.version>
         <spring.doc.version>2.3.0</spring.doc.version>
         <fastjson.version>2.15.4</fastjson.version>
+        <!-- jwt -->
+        <jjwt.version>0.11.5</jjwt.version>
         <!--  中间件  -->
         <mysql.version>8.0.33</mysql.version>
         <redis.version>7.2.4</redis.version>
@@ -122,6 +124,31 @@
                 <version>${lombok.version}</version>
                 <optional>true</optional>
             </dependency>
+
+            <!-- JWT API -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <!-- JWT 实现 -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <!-- JSON 序列化（Jackson，和 Spring Boot 完美适配） -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+
+
         </dependencies>
     </dependencyManagement>
     <modules>
@@ -130,9 +157,7 @@
         <module>exchange-auth</module>
         <module>exchange-asset</module>
         <module>exchange-order</module>
-        <module>exchange-match</module>
         <module>exchange-chain</module>
-        <module>exchange-risk</module>
         <module>exchange-notify</module>
         <module>exchange-monitor</module>
         <module>exchange-user</module>

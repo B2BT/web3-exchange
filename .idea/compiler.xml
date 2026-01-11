@@ -8,9 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="exchange-notify" />
-        <module name="exchange-risk" />
         <module name="exchange-auth" />
-        <module name="exchange-match" />
         <module name="exchange-chain" />
         <module name="exchange-order" />
         <module name="exchange-monitor" />
@@ -20,6 +18,10 @@
         <module name="exchange-gateway" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="exchange-match" target="17" />
+      <module name="exchange-risk" target="17" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

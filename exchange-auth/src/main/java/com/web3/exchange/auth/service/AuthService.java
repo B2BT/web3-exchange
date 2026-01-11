@@ -1,24 +1,26 @@
 package com.web3.exchange.auth.service;
 
 import com.web3.exchange.auth.dto.request.LoginRequest;
-import com.web3.exchange.auth.dto.response.AuthResponse;
+import com.web3.exchange.auth.dto.response.LoginResponse;
 import com.web3.exchange.auth.dto.response.TokenResponse;
 import com.web3.exchange.auth.dto.response.UserInfoResponse;
 
 public interface AuthService {
     /**
      * 用户登陆
-     * @param loginRequest
+     * @param request
+     * @param clientIp
+     * @param userAgent
      * @return
      */
-    AuthResponse login(LoginRequest loginRequest);
+    LoginResponse login(LoginRequest request, String clientIp, String userAgent);
 
     /**
      * 刷新访问令牌
      * @param refreshToken
      * @return
      */
-    TokenResponse refreshToken(String refreshToken);
+    TokenResponse refreshAccessToken(String refreshToken);
 
     /**
      * 用户登出
@@ -28,14 +30,11 @@ public interface AuthService {
 
     /**
      * 验证令牌
-     * @param token
+     * @param accessToken
+     * @param refreshToken
      * @return
      */
-    boolean validateToken(String token);
+    boolean validateToken(String accessToken, String refreshToken);
 
-    /**
-     * 获取当前登录用户信息
-     * @return
-     */
-    UserInfoResponse getCurrentUserInfo();
+    public void logoutAll(Long userId);
 }
