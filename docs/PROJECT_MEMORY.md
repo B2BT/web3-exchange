@@ -94,12 +94,12 @@
 - ✅ **gateway 实现 AuthFilter**：JWT 鉴权 + 白名单 + 用户信息透传；从 common 排除 Servlet 栈解决 WebFlux 冲突
 - ✅ **修复运行阻塞**：SecurityConfig 重载 @Bean、common application.yml 泄漏服务名、gateway 补主类、补 spring-boot-maven-plugin
 - ✅ **auth/gateway 已实际运行验证通过**：auth(8102) 实现 UserDetailsService(Feign 取用户) 后启动成功；gateway(8080) 启动成功且鉴权拦截生效（无 token/伪造 token 均 401）；网关路由转发 auth/login 正常
+- ✅ **登录 E2E 已打通**：经网关登录(admin/Test@123)拿到 token(200)、带 token 访问受保护接口放行(200)、无 token 被拦(401)；修复 roles/permissions 为 null 时 NPE、JWT 密钥不足 HS512(≥64字符)
 - ✅ **5 个空骨架模块 yml 修正**：name 修正，端口 8103-8107
 - ✅ **新增 `docs/ARCHITECTURE.md`**：全局架构设计文档
 - ✅ 全项目 `mvn clean package`（temurin-17）通过
 
 ### 待办 / 遗留问题
-- 🟡 **登录 E2E 未完全打通**：网关能转发 auth/login，但完整登录需数据库里有该用户且密码 BCrypt 匹配（当前测试用户不存在返回 500 业务异常，属预期）
 - 🔴 `user/application.yml`：`type-aliases-package` 指向错误包 `com.example.user.entity`（应 `com.web3.exchange.user.entity`）；声明 PageHelper 但依赖未配齐
 - 🔴 `UserController.getUserInfo` 返回裸 `UserDetailDTO` 而非统一 `Result<T>`
 - 🔴 `UserServiceImpl.userToDetailDTO` 把 `password`/`secretKey` 塞进 DTO（敏感信息泄露风险，已在 /api/users/list 实证）
