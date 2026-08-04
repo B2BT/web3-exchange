@@ -44,7 +44,7 @@ mybatis-plus:
   # 支持通配符
   mapper-locations: classpath*:/mapper/**/*.xml
   # 实体类扫描
-  type-aliases-package: com.example.user.entity
+  type-aliases-package: com.web3.exchange.user.entity
   # 全局配置
   global-config:
     db-config:
@@ -71,12 +71,6 @@ mybatis-plus:
     cache-enabled: true
     # 返回null字段
     call-setters-on-nulls: true
-
-  # 分页插件配置
-  pagehelper:
-    helper-dialect: mysql
-    reasonable: true
-    support-methods-arguments: true
 
 # 最简SpringDoc配置
 springdoc:

@@ -3,48 +3,30 @@ package com.web3.exchange.user.vo;
 import lombok.Data;
 
 import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
+/**
+ * 用户列表展示 VO（脱敏）
+ * 仅暴露非敏感展示字段，不包含 password / secretKey / idCardNo / walletAddress 等敏感信息。
+ */
 @Data
-public class UserVO {
+public class UserVO implements Serializable {
     @Serial
-    private static final long  serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-    private String id;
+    private Long id;
     private String username;
-    private String password;
+    private String nickname;
     private String email;
     private String phone;
-    private String nickname;
-    private String realname;
     private String avatar;
     private Integer status;
-    private Integer accountNonExpired;
-    private Integer accountNonLocked;
-    private Integer credentialNonExpired;
-    private Integer enabled;
-    private LocalDateTime lastLoginTime;
-    private String lastLoginIp;
-    private LocalDateTime loginFailTime;
-    private Integer loginFailCount;
-    private LocalDateTime lockUntil;
-    private LocalDateTime passwordUpdateTime;
-    private LocalDateTime passwordExpireTime;
-    private String secretKey;
     private Integer twoFactorEnabled;
-    private String twofactorType;
     private String userLevel;
-    private String inviteCode;
-    private String invitedBy;
     private String registerSource;
-    private String registerIp;
     private Integer kycStatus;
     private Integer kycLevel;
-    private String idCardType;
-    private String idCardNo;
-    private String idCardFront;
-    private LocalDateTime kycVerifyTime;
-    private String walletAddress;
-    private String walletType;
-    private Integer walletVerified;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 }

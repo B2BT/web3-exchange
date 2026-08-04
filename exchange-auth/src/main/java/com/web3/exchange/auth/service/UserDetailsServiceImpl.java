@@ -3,6 +3,7 @@ package com.web3.exchange.auth.service;
 import com.web3.exchange.auth.feign.UserServiceClient;
 import com.web3.exchange.auth.security.domain.AuthUser;
 import com.web3.exchange.auth.security.domain.UserPrincipal;
+import com.web3.exchange.common.model.Result;
 import com.web3.exchange.common.user.UserDetailDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         try {
-            UserDetailDTO userDetail = userServiceClient.getUserInfo(username);
+            Result<UserDetailDTO> result = userServiceClient.getUserInfo(username);
+            UserDetailDTO userDetail = result != null ? result.getData() : null;
             if (userDetail == null) {
                 throw new UsernameNotFoundException("用户不存在: " + username);
             }

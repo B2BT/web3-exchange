@@ -1,5 +1,6 @@
 package com.web3.exchange.auth.feign;
 
+import com.web3.exchange.common.model.Result;
 import com.web3.exchange.common.user.UserDetailDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,7 @@ import java.util.List;
 public interface UserServiceClient {
 
     @GetMapping("/info/{username}")
-    UserDetailDTO getUserInfo(@PathVariable("username") String username);
+    Result<UserDetailDTO> getUserInfo(@PathVariable("username") String username);
 
     @GetMapping("/{username}/authorities")
     List<String> getUserAuthorities(@PathVariable("username") String username);

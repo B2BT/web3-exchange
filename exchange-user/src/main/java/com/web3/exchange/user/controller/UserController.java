@@ -2,8 +2,8 @@ package com.web3.exchange.user.controller;
 
 import com.web3.exchange.common.model.Result;
 import com.web3.exchange.common.user.UserDetailDTO;
-import com.web3.exchange.user.entity.User;
 import com.web3.exchange.user.service.UserService;
+import com.web3.exchange.user.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +23,13 @@ public class UserController {
 
     @GetMapping("/list")
     @Operation(summary = "查询用户列表")
-    public Result<List<User>> getUserList(){
-        List<User> list = userService.getUserList();
+    public Result<List<UserVO>> getUserList(){
+        List<UserVO> list = userService.getUserList();
         return Result.success(list);
     }
     @Operation(summary = "获取用户信息，鉴权")
     @GetMapping("/info/{username}")
-    UserDetailDTO getUserInfo(@PathVariable("username") String username){
-        return userService.getUserInfo(username);
+    public Result<UserDetailDTO> getUserInfo(@PathVariable("username") String username){
+        return Result.success(userService.getUserInfo(username));
     }
 }
