@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -181,24 +180,9 @@ public class SecurityConfig {
      * @return
      * @throws Exception
      */
-    // 注意：与上方 authenticationManager(AuthenticationConfiguration) 的返回类型相同，
-    // 为避免 Spring 6+ 对重载 @Bean 方法名重复的报错，此处方法名必须唯一。
-    @Bean
-    public AuthenticationManager passwordAuthenticationManager(
-            HttpSecurity http,
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) throws Exception {
-
-        AuthenticationManagerBuilder authenticationManagerBuilder =
-                http.getSharedObject(AuthenticationManagerBuilder.class);
-
-        // 直接配置，避免代理
-        authenticationManagerBuilder
-                .userDetailsService(userDetailsService)
-                .passwordEncoder(passwordEncoder);
-
-        return authenticationManagerBuilder.build();
-    }
+    // 认证由上方 authenticationManager(AuthenticationConfiguration) 的 @Primary 全局管理器负责，
+    // 它通过 DaoAuthenticationProvider bean（注入 UserDetailsService + PasswordEncoder）完成认证。
+    // 因此不再需要手动的 passwordAuthenticationManager bean，避免多个 AuthenticationManager 造成歧义或重复 build 启动失败。
 
     /**
      * 核心：验证Token签名

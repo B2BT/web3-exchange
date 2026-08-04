@@ -12,30 +12,26 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
+        # auth 服务：servlet context-path=/auth，Controller 映射为 /api/auth/***
+        # 网关收到 /api/auth/login 后重写为 /auth/api/auth/login，forward 到 exchange-auth 的 /auth 上下文
         - id: auth-service
-          uri: lb://auth-service
+          uri: lb://exchange-auth
           predicates:
             - Path=/api/auth/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/auth/(?<segment>.*), /auth/api/auth/${segment}
+        # user 服务：无 context-path，Controller 映射为 /api/users/***
         - id: user-service
-          uri: lb://user-service
+          uri: lb://exchange-user
           predicates:
-            - Path=/api/user/**
-          filters:
-            - StripPrefix=1
-            - name: AuthFilter
-              args:
-                requiredRoles: ADMIN,USER
-        - id: order-service
-          uri: lb://order-service
-          predicates:
-            - Path=/api/order/**
-          filters:
-            - StripPrefix=1
-            - name: AuthFilter
-              args:
-                requiredRoles: USER
+            - Path=/api/users/**
+        # order 服务尚未实现/启动，先注释，避免误导
+        # - id: order-service
+        #   uri: lb://exchange-order
+        #   predicates:
+        #     - Path=/api/order/**
+        #   filters:
+        #     - StripPrefix=1
     nacos:
       discovery:
         server-addr: localhost:8848

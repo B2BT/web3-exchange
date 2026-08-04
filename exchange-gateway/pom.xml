@@ -25,6 +25,12 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
+        <!-- Spring Cloud LoadBalancer：lb:// 负载均衡路由依赖（网关按服务名转发必需） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
         <!-- 公共模块（统一响应 Result 等）
              注意：网关是 WebFlux/响应式栈。exchange-common 传递引入的
              spring-boot-starter-web 与 springdoc-openapi-starter-webmvc-ui（Servlet 栈）
