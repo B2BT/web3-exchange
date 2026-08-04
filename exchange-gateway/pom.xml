@@ -31,6 +31,12 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
+        <!-- Redis 响应式客户端：支撑 RequestRateLimiter 网关限流（基于 Redis 令牌桶） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+
         <!-- 公共模块（统一响应 Result 等）
              注意：网关是 WebFlux/响应式栈。exchange-common 传递引入的
              spring-boot-starter-web 与 springdoc-openapi-starter-webmvc-ui（Servlet 栈）

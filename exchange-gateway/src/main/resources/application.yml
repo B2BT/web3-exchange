@@ -20,11 +20,32 @@ spring:
             - Path=/api/auth/**
           filters:
             - RewritePath=/api/auth/(?<segment>.*), /auth/api/auth/${segment}
+            # 限流：验证码/登录接口较低阈值（replenishRate=5/秒, burstCapacity=10 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
         # user 服务：无 context-path，Controller 映射为 /api/users/***
         - id: user-service
           uri: lb://exchange-user
           predicates:
             - Path=/api/users/**
+          filters:
+            # 限流：用户接口基础阈值（replenishRate=10/秒, burstCapacity=20 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+        # 行情/通知 WebSocket 推送路由（预留）
+        # 说明：exchange-market 服务尚未实现，uri 目标不可用。
+        # 启用方法：待 exchange-market 部署并注册到 Nacos 后，去掉本注释即可生效。
+        # Spring Cloud Gateway 原生支持 WebSocket 升级转发（含 spring-cloud-gateway-server 即可，无需额外 websocket 依赖）。
+        # - id: market-websocket
+        #   uri: lb://exchange-market
+        #   predicates:
+        #     - Path=/ws/**
         # order 服务尚未实现/启动，先注释，避免误导
         # - id: order-service
         #   uri: lb://exchange-order
