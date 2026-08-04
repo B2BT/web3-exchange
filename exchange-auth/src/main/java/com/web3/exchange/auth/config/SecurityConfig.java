@@ -2,6 +2,7 @@ package com.web3.exchange.auth.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -125,7 +126,10 @@ public class SecurityConfig {
     /**
      * 认证管理器
      */
+    // 使用 AuthenticationConfiguration 获取 Spring 自动装配的 AuthenticationManager，
+    // 这是 Spring Boot 推荐的规范做法；标记 @Primary 以消除与 passwordAuthenticationManager 的类型歧义。
     @Bean
+    @Primary
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
@@ -177,8 +181,10 @@ public class SecurityConfig {
      * @return
      * @throws Exception
      */
+    // 注意：与上方 authenticationManager(AuthenticationConfiguration) 的返回类型相同，
+    // 为避免 Spring 6+ 对重载 @Bean 方法名重复的报错，此处方法名必须唯一。
     @Bean
-    public AuthenticationManager authenticationManager(
+    public AuthenticationManager passwordAuthenticationManager(
             HttpSecurity http,
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) throws Exception {
