@@ -174,7 +174,7 @@ public class UserPrincipal implements UserDetails {
                 .username(user.getUsername())
                 .password(user.getEncryptedPassword())
                 .status(user.getStatus())
-                .permissions(new HashSet<>(permissions))
+                .permissions(permissions != null ? new HashSet<>(permissions) : new HashSet<>())
                 .roles(user.getRoles() != null ? new HashSet<>(user.getRoles()) : new HashSet<>())
                 .build();
     }

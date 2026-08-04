@@ -42,4 +42,4 @@ spring:
     database: 0
 
 jwt:
-  secret: your-256-bit-secret-key-for-jwt-signing-change-this-in-production
+  secret: web3-exchange-dev-hs512-jwt-secret-key-2026-0804-please-use-at-least-64-chars

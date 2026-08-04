@@ -65,8 +65,8 @@ public class AuthUser {
                 .userId(userDTO.getId())
                 .username(userDTO.getUsername())
                 .status(userDTO.getStatus())
-                .roles(new HashSet<>(userDTO.getRoles()))
-                .permissions(new HashSet<>(userDTO.getPermissions()))
+                .roles(userDTO.getRoles() != null ? new HashSet<>(userDTO.getRoles()) : new HashSet<>())
+                .permissions(userDTO.getPermissions() != null ? new HashSet<>(userDTO.getPermissions()) : new HashSet<>())
                 .tenantId(userDTO.getTenantId())
                 .lastUpdateTime(System.currentTimeMillis())
                 .build();

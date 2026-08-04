@@ -62,7 +62,7 @@ spring:
 # JWT配置
 jwt:
   # 密钥（生产环境使用环境变量）
-  secret: ${JWT_SECRET:mySuperSecretKeyForJWTTokenGenerationInSpringCloudProject2024}
+  secret: ${JWT_SECRET:web3-exchange-dev-hs512-jwt-secret-key-2026-0804-please-use-at-least-64-chars}
   # 签发者
   issuer: web3-auth-service
   # 令牌头配置
