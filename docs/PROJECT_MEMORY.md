@@ -22,8 +22,8 @@
 |------|------|------|----------|----------|
 | `exchange-common` | — | 公共类库：统一响应 `Result`、异常体系、Base 实体、监控、MyBatis-Plus 配置 | ✅ 完整 | — |
 | `exchange-user` | 8101 | 用户服务：用户 CRUD、鉴权查询 | 🟡 基本可用 | common |
-| `exchange-auth` | 8102 | 认证服务：登录/登出/双令牌刷新、验证码 | 🟡 已修复可编译（运行需 Nacos/Redis/密钥） | common |
-| `exchange-gateway` | 8080 | API 网关：路由 + JWT 认证过滤 | 🟡 AuthFilter 已实现、可编译（未验证运行） | common |
+| `exchange-auth` | 8102 | 认证服务：登录/登出/双令牌刷新、验证码 | 🟢 可运行（已实际启动验证） | common |
+| `exchange-gateway` | 8080 | API 网关：路由 + JWT 认证过滤 | 🟢 可运行（已实际启动验证，鉴权拦截 401 生效） | common |
 | `exchange-asset` | 8103 | 资产服务（规划中） | 🅿️ 空骨架 | — |
 | `exchange-order` | 8104 | 订单服务（规划中） | 🅿️ 空骨架 | — |
 | `exchange-chain` | 8105 | 链上服务 / web3j（规划中） | 🅿️ 空骨架 | — |
@@ -90,18 +90,19 @@
 ## 六、开发进度与已知问题
 
 ### Phase 1 已完成（2026-08-04，git 已提交）
-- ✅ **auth 服务修复可编译**：补齐 `RefreshTokenRequest`、修 `UserPrincipal` 包路径、清理无效依赖、补 OAuth2 JWT 依赖、修 `application.yml`（中文句号/`cig.import`/springdoc 缩进）
-- ✅ **gateway 实现 AuthFilter**：JWT 鉴权 + 白名单 + 用户信息透传；并从 common 依赖排除 Servlet 栈（`spring-boot-starter-web`、`springdoc-openapi-starter-webmvc-ui`），解决 WebFlux 冲突
-- ✅ **5 个空骨架模块 yml 修正**：name 改为各自模块名，端口分配 8103-8107
-- ✅ **新增 `docs/ARCHITECTURE.md`**：全局架构设计文档（模块划分/撮合选型/数据库设计/路线图）
-- ✅ 全项目 `mvn clean compile`（temurin-17）通过
+- ✅ **auth 服务修复可编译**：补齐 `RefreshTokenRequest`、修 `UserPrincipal` 包路径、清理无效依赖、补 OAuth2 JWT 依赖、修 `application.yml`
+- ✅ **gateway 实现 AuthFilter**：JWT 鉴权 + 白名单 + 用户信息透传；从 common 排除 Servlet 栈解决 WebFlux 冲突
+- ✅ **修复运行阻塞**：SecurityConfig 重载 @Bean、common application.yml 泄漏服务名、gateway 补主类、补 spring-boot-maven-plugin
+- ✅ **auth/gateway 已实际运行验证通过**：auth(8102) 实现 UserDetailsService(Feign 取用户) 后启动成功；gateway(8080) 启动成功且鉴权拦截生效（无 token/伪造 token 均 401）；网关路由转发 auth/login 正常
+- ✅ **5 个空骨架模块 yml 修正**：name 修正，端口 8103-8107
+- ✅ **新增 `docs/ARCHITECTURE.md`**：全局架构设计文档
+- ✅ 全项目 `mvn clean package`（temurin-17）通过
 
 ### 待办 / 遗留问题
-- 🟡 **gateway 未运行验证**：编译通过但未实际启动；运行仍依赖 Nacos 注册中心、Redis、JWT 密钥；网关可能仍引入 common 的 Redis/MyBatis-Plus 自动配置，启动时需排查
-- 🟡 **auth 运行依赖**：`AuthenticationManager`/`UserDetailsService` 需 Nacos/Redis/正确密钥才能真正跑通登录
+- 🟡 **登录 E2E 未完全打通**：网关能转发 auth/login，但完整登录需数据库里有该用户且密码 BCrypt 匹配（当前测试用户不存在返回 500 业务异常，属预期）
 - 🔴 `user/application.yml`：`type-aliases-package` 指向错误包 `com.example.user.entity`（应 `com.web3.exchange.user.entity`）；声明 PageHelper 但依赖未配齐
 - 🔴 `UserController.getUserInfo` 返回裸 `UserDetailDTO` 而非统一 `Result<T>`
-- 🔴 `UserServiceImpl.userToDetailDTO` 把 `password`/`secretKey` 塞进 DTO（敏感信息泄露风险）
+- 🔴 `UserServiceImpl.userToDetailDTO` 把 `password`/`secretKey` 塞进 DTO（敏感信息泄露风险，已在 /api/users/list 实证）
 - ⚠️ 冗余未用类：auth 的 `TokenService`、`SessionService`
 
 ### Phase 2 规划（按 docs/ARCHITECTURE.md）
