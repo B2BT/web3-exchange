@@ -1,0 +1,22 @@
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+
+# ===== Java / Maven =====
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== 本地运行时数据 =====
+dev-env/mysql/data/
+dev-env/redis/data/
+dev-env/nacos/
+
+# ===== 日志 =====
+logs/
+*.log
+
+# ===== 系统 =====
+.DS_Store
