@@ -41,6 +41,7 @@ public class User extends BaseEntity {
     private String idCardType;
     private String idCardNo;
     private String idCardFront;
+    private String idCardBack;
     private LocalDateTime kycVerifyTime;
     private String walletAddress;
     private String walletType;

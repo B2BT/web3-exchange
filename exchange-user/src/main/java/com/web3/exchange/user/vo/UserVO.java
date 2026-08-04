@@ -18,6 +18,7 @@ public class UserVO implements Serializable {
     private Long id;
     private String username;
     private String nickname;
+    private String realName;
     private String email;
     private String phone;
     private String avatar;
@@ -25,6 +26,7 @@ public class UserVO implements Serializable {
     private Integer twoFactorEnabled;
     private String userLevel;
     private String registerSource;
+    private String inviteCode;
     private Integer kycStatus;
     private Integer kycLevel;
     private LocalDateTime createTime;
