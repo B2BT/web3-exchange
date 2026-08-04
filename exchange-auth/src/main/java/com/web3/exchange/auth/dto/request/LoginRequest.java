@@ -26,6 +26,9 @@ public class LoginRequest {
     @Schema(description = "验证码UUID", example = "d9b1d7db-4e5e-4e7a-bc8e-91f9b3a3e3a1")
     private String captchaId;
 
+    @Schema(description = "2FA TOTP 动态验证码（用户开启2FA后必填）", example = "123456")
+    private String totpCode;
+
     @Schema(description = "登录IP", example = "192.168.1.1")
     private String loginIp;
 

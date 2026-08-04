@@ -69,4 +69,13 @@ public interface UserService extends IService<User>  {
      * @return 用户等级
      */
     String getUserLevel(Long id);
+
+    /**
+     * 更新用户密码（BCrypt 加密）
+     * <p>供 auth 服务修改/重置密码(P3-B)通过 Feign 调用。</p>
+     *
+     * @param id          用户ID
+     * @param newPassword 明文新密码（内部会 BCrypt 加密）
+     */
+    void updatePassword(Long id, String newPassword);
 }

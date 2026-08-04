@@ -3,6 +3,7 @@ package com.web3.exchange.user.controller;
 import com.web3.exchange.common.model.Result;
 import com.web3.exchange.common.user.UserDetailDTO;
 import com.web3.exchange.user.dto.KYCSubmitDTO;
+import com.web3.exchange.user.dto.PasswordUpdateDTO;
 import com.web3.exchange.user.dto.RegisterDTO;
 import com.web3.exchange.user.dto.UpdateProfileDTO;
 import com.web3.exchange.user.service.UserService;
@@ -74,6 +75,18 @@ public class UserController {
     @Operation(summary = "查询KYC认证状态")
     public Result<KycStatusVO> getKycStatus(@PathVariable("id") Long id){
         return Result.success(userService.getKycStatus(id));
+    }
+
+    /**
+     * 更新用户密码（BCrypt 加密）
+     * <p>供 auth 服务修改/重置密码(P3-B)通过 Feign 调用。</p>
+     */
+    @PutMapping("/{id}/password")
+    @Operation(summary = "更新用户密码")
+    public Result<Void> updatePassword(@PathVariable("id") Long id,
+                                       @Valid @RequestBody PasswordUpdateDTO dto){
+        userService.updatePassword(id, dto.getNewPassword());
+        return Result.success();
     }
 
     /**

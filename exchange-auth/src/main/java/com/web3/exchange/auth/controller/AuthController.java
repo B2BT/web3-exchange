@@ -1,12 +1,17 @@
 package com.web3.exchange.auth.controller;
 
 
+import com.web3.exchange.auth.dto.request.ChangePasswordRequest;
 import com.web3.exchange.auth.dto.request.LoginRequest;
 import com.web3.exchange.auth.dto.request.RefreshTokenRequest;
+import com.web3.exchange.auth.dto.request.RegisterRequest;
+import com.web3.exchange.auth.dto.request.ResetPasswordRequest;
+import com.web3.exchange.auth.dto.response.CaptchaResponse;
 import com.web3.exchange.auth.dto.response.LoginResponse;
 import com.web3.exchange.auth.dto.response.TokenPair;
 import com.web3.exchange.auth.security.jwt.JwtTokenProvider;
 import com.web3.exchange.auth.service.AuthService;
+import com.web3.exchange.auth.service.CaptchaService;
 import com.web3.exchange.common.exception.AuthException;
 import com.web3.exchange.common.model.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +34,49 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final CaptchaService captchaService;
+
+    /**
+     * 获取图形验证码
+     */
+    @GetMapping("/captcha")
+    @Operation(summary = "获取图形验证码", description = "返回 captchaId 与算式/答案，登录/注册需携带")
+    public Result<CaptchaResponse> captcha() {
+        return Result.success(captchaService.generate());
+    }
+
+    /**
+     * 用户注册
+     */
+    @PostMapping("/register")
+    @Operation(summary = "用户注册", description = "校验验证码后调 user 服务注册")
+    public Result<Void> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return Result.success();
+    }
+
+    /**
+     * 修改密码（需登录）
+     */
+    @PostMapping("/change-password")
+    @Operation(summary = "修改密码", description = "校验原密码后更新为新密码，需携带登录 Access Token")
+    public Result<Void> changePassword(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        String username = currentUsername(authHeader);
+        authService.changePassword(username, request);
+        return Result.success();
+    }
+
+    /**
+     * 重置密码（生产环境需补充短信/邮箱验证码）
+     */
+    @PostMapping("/reset-password")
+    @Operation(summary = "重置密码", description = "按用户名/邮箱重置密码（本次简化实现，生产应加短信/邮箱验证码）")
+    public Result<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return Result.success();
+    }
 
     /**
      * 登录接口
@@ -147,5 +195,20 @@ public class AuthController {
             return authHeader.substring(7);
         }
         return null;
+    }
+
+    /**
+     * 从 Authorization 头解析当前登录用户名
+     */
+    private String currentUsername(String authHeader) {
+        if (authHeader == null || authHeader.isBlank()) {
+            throw new AuthException("未登录，缺少 Authorization 请求头");
+        }
+        try {
+            return jwtTokenProvider.getUsernameFromAccessToken(authHeader);
+        } catch (Exception e) {
+            log.error("解析当前用户名失败", e);
+            throw new AuthException("无效的 Access Token");
+        }
     }
 }

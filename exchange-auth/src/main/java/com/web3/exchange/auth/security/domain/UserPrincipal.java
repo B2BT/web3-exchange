@@ -42,7 +42,7 @@ public class UserPrincipal implements UserDetails {
     private String password;
 
     /**
-     * 用户状态：0-正常，1-禁用
+     * 用户状态：0-禁用，1-正常，2-锁定，3-冻结
      */
     private Integer status;
 
@@ -80,6 +80,16 @@ public class UserPrincipal implements UserDetails {
      * 登录IP
      */
     private String loginIp;
+
+    /**
+     * 是否开启2FA：0-未开启，1-已开启
+     */
+    private Integer twoFactorEnabled;
+
+    /**
+     * 2FA base32 密钥（RFC 6238），仅 twoFactorEnabled==1 时有意义
+     */
+    private String secretKey;
 
     /**
      * 权限列表
@@ -144,7 +154,7 @@ public class UserPrincipal implements UserDetails {
      */
     @Override
     public boolean isAccountNonLocked() {
-        return !Integer.valueOf(1).equals(status);
+        return !Integer.valueOf(2).equals(status); // 2=锁定
     }
 
     /**
@@ -162,7 +172,7 @@ public class UserPrincipal implements UserDetails {
      */
     @Override
     public boolean isEnabled() {
-        return !Integer.valueOf(1).equals(status);
+        return !Integer.valueOf(0).equals(status); // 0=禁用
     }
 
     /**
@@ -174,6 +184,8 @@ public class UserPrincipal implements UserDetails {
                 .username(user.getUsername())
                 .password(user.getEncryptedPassword())
                 .status(user.getStatus())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
+                .secretKey(user.getSecretKey())
                 .permissions(permissions != null ? new HashSet<>(permissions) : new HashSet<>())
                 .roles(user.getRoles() != null ? new HashSet<>(user.getRoles()) : new HashSet<>())
                 .build();

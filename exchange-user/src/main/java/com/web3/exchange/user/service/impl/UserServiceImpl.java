@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private static final int DEFAULT_STATUS = 1;
 
     private static final String INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    // RFC 4648 base32 字母表(A-Z + 2-7，不含 0/1/8/9/I/O)，用于 2FA secret
+    private static final String BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom secureRandom = new SecureRandom();
@@ -187,6 +190,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return user.getUserLevel();
     }
 
+    /**
+     * 更新用户密码（BCrypt 加密）
+     * <p>供 auth 服务修改/重置密码(P3-B)通过 Feign 调用。</p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePassword(Long id, String newPassword) {
+        requireUser(id);
+        String encoded = passwordEncoder.encode(newPassword);
+        this.update(new LambdaUpdateWrapper<User>()
+                .eq(User::getId, id)
+                .set(User::getPassword, encoded)
+                .set(User::getPasswordUpdateTime, LocalDateTime.now()));
+    }
+
     // ==================== 私有方法 ====================
 
     private User requireUser(Long id) {
@@ -247,10 +265,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
-     * 生成 base32 格式的 2FA 密钥（Google Authenticator 兼容）
+     * 生成 RFC 4648 base32 格式的 2FA 密钥（Google Authenticator 兼容）
      */
     private String generateBase32Secret() {
-        return randomString(32);
+        StringBuilder sb = new StringBuilder(32);
+        for (int i = 0; i < 32; i++) {
+            sb.append(BASE32_CHARS.charAt(secureRandom.nextInt(BASE32_CHARS.length())));
+        }
+        return sb.toString();
     }
 
     /**
@@ -289,6 +311,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return UserDetailDTO.builder()
                 .password(user.getPassword())
                 .salt(user.getSecretKey())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
+                .secretKey(user.getSecretKey())
                 .loginFailureCount(user.getLoginFailCount())
                 .lastLoginTime(user.getLastLoginTime())
                 .lastLoginIp(user.getLastLoginIp())

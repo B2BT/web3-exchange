@@ -48,6 +48,8 @@ public class SecurityConfig {
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/captcha/**",
+            "/api/auth/change-password",
+            "/api/auth/reset-password",
             "/api/auth/password/forgot",
             "/api/auth/password/reset",
             "/api/auth/refresh",

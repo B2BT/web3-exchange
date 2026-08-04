@@ -53,6 +53,16 @@ public class AuthUser {
     private Long tenantId;
 
     /**
+     * 是否开启2FA：0-未开启，1-已开启
+     */
+    private Integer twoFactorEnabled;
+
+    /**
+     * 2FA base32 密钥（RFC 6238），仅 twoFactorEnabled==1 时有意义
+     */
+    private String secretKey;
+
+    /**
      * 最后更新时间
      */
     private Long lastUpdateTime;
@@ -78,6 +88,8 @@ public class AuthUser {
     public static AuthUser fromDetailDTO(UserDetailDTO userDetailDTO) {
         AuthUser authUser = fromDTO(userDetailDTO);
         authUser.setEncryptedPassword(userDetailDTO.getPassword());
+        authUser.setTwoFactorEnabled(userDetailDTO.getTwoFactorEnabled());
+        authUser.setSecretKey(userDetailDTO.getSecretKey());
         return authUser;
     }
 }

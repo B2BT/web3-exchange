@@ -23,4 +23,8 @@ public class UserDetailDTO extends UserDTO {
     private Integer loginFailureCount;
     private LocalDateTime lastLoginTime;
     private String lastLoginIp;
+    /** 是否开启2FA：0-未开启，1-已开启 */
+    private Integer twoFactorEnabled;
+    /** 2FA base32 密钥（RFC 6238），仅当 twoFactorEnabled==1 时有意义 */
+    private String secretKey;
 }
