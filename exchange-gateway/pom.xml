@@ -12,4 +12,47 @@
     <artifactId>exchange-gateway</artifactId>
     <description>系统统一入口，处理路由、请求转发、鉴权、限流，前端/APP/量化机器人访问统一入口。</description>
 
+    <dependencies>
+        <!-- Spring Cloud Gateway（基于 WebFlux 响应式，包含 spring-webflux） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <!-- 服务注册与发现 (Nacos) -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+
+        <!-- 公共模块（统一响应 Result 等） -->
+        <dependency>
+            <groupId>com.web3.exchange</groupId>
+            <artifactId>exchange-common</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- JWT 解析与校验 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
 </project>

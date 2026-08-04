@@ -1,15 +1,12 @@
 package com.web3.exchange.auth.service.Impl;
 
-import com.web3.exchange.auth.domain.UserPrincipal;
 import com.web3.exchange.auth.dto.request.LoginRequest;
 import com.web3.exchange.auth.dto.response.LoginResponse;
 import com.web3.exchange.auth.dto.response.TokenPair;
-import com.web3.exchange.auth.dto.response.TokenResponse;
 import com.web3.exchange.auth.dto.response.UserInfoResponse;
+import com.web3.exchange.auth.security.domain.UserPrincipal;
 import com.web3.exchange.auth.security.jwt.JwtTokenProvider;
 import com.web3.exchange.auth.service.AuthService;
-import com.web3.exchange.auth.service.CaptchaService;
-import com.web3.exchange.auth.service.UserService;
 import com.web3.exchange.common.exception.AuthException;
 import com.web3.exchange.common.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
@@ -28,17 +25,12 @@ public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
-    private final CaptchaService captchaService;
-    private final UserService userService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LoginResponse login(LoginRequest request, String clientIp, String userAgent) {
         try {
-            // 1. 验证验证码
-            validateCaptcha(request);
-
-            // 2. 执行认证
+            // 1. 执行认证
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getUsername(),
@@ -46,30 +38,27 @@ public class AuthServiceImpl implements AuthService {
                     )
             );
 
-            // 3. 设置安全上下文
+            // 2. 设置安全上下文
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // 4. 获取用户信息
+            // 3. 获取用户信息
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
-            // 5. 生成双令牌
+            // 4. 生成双令牌
             TokenPair tokenPair = jwtTokenProvider.generateTokenPair(authentication);
 
-            // 6. 记录登录成功
-            userService.recordLoginSuccess(
-                    userPrincipal.getId(),
-                    clientIp,
-                    userAgent
-            );
-
-            // 7. 获取用户详情
-            UserInfoResponse userInfo = userService.getUserInfo(userPrincipal.getId());
-
-            // 8. 检查Access Token是否即将过期
+            // 5. 检查Access Token是否即将过期
             boolean needRefresh = jwtTokenProvider.isAccessTokenExpiringSoon(
                     tokenPair.getAccessToken()
             );
             tokenPair.setNeedRefresh(needRefresh);
+
+            // 6. 根据认证主体构造用户信息响应
+            UserInfoResponse userInfo = UserInfoResponse.simple(
+                    userPrincipal.getUserId(),
+                    userPrincipal.getUsername(),
+                    userPrincipal.getUsername()
+            );
 
             return LoginResponse.builder()
                     .accessToken(tokenPair.getAccessToken())
@@ -78,7 +67,6 @@ public class AuthServiceImpl implements AuthService {
                     .expiresIn(tokenPair.getAccessTokenExpiresIn())
                     .refreshExpiresIn(tokenPair.getRefreshTokenExpiresIn())
                     .userInfo(userInfo)
-                    .needRefresh(needRefresh)
                     .build();
 
         } catch (Exception e) {
@@ -99,7 +87,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public TokenResponse refreshAccessToken(String refreshToken) {
+    public String refreshAccessToken(String refreshToken) {
         try {
             // 仅刷新Access Token
             return jwtTokenProvider.refreshAccessToken(refreshToken);
@@ -118,8 +106,8 @@ public class AuthServiceImpl implements AuthService {
             }
 
             if (refreshToken != null) {
-                // 标记Refresh Token为已使用
-                jwtTokenProvider.markRefreshTokenUsed(refreshToken);
+                // 将Refresh Token加入黑名单
+                jwtTokenProvider.blacklistToken(refreshToken, 3600);
             }
 
             // 清除安全上下文
@@ -146,18 +134,13 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    /**
-     * 验证验证码
-     */
-    private void validateCaptcha(LoginRequest request) {
-        if (captchaService.isCaptchaEnabled()) {
-            if (request.getCaptcha() == null || request.getCaptchaKey() == null) {
-                throw new AuthException("验证码不能为空");
-            }
-
-            if (!captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptcha())) {
-                throw new AuthException("验证码错误");
-            }
+    @Override
+    public boolean validateToken(String accessToken) {
+        try {
+            return jwtTokenProvider.validateAccessToken(accessToken);
+        } catch (Exception e) {
+            log.error("验证令牌失败", e);
+            return false;
         }
     }
 }

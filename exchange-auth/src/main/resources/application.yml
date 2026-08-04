@@ -9,6 +9,10 @@ spring:
   application:
     name: exchange-auth # 必须配置，对应 Nacos 中的 Data ID 前缀
 
+  # 从 Nacos 配置中心导入共享配置
+  config:
+    import: "nacos:exchange-auth.yaml"
+
   # Redis
   redis:
     host: ${REDIS_HOST:localhost}
@@ -21,11 +25,9 @@ spring:
         max-idle: 8
         min-idle: 0
       shutdown-timeout: 100ms
-  cig:
-    import: "nacos:exchange-auth.yaml"
   cloud:
     nacos:
-      server-addr: 127.0.0.1:8848。 # Nacos 注册中心地址
+      server-addr: 127.0.0.1:8848 # Nacos 注册中心地址
       discovery:
         namespace: public
         group: DEFAULT_GROUP
@@ -43,20 +45,20 @@ spring:
         default:
           connect-timeout: 5000
           read-timeout: 10000
-    # 安全配置
-    security:
-      # 密码编码器
-      password:
-        encoder:
-          type: bcrypt
-          strength: 10
+  # 安全配置
+  security:
+    # 密码编码器
+    password:
+      encoder:
+        type: bcrypt
+        strength: 10
 
-      # 登录失败限制
-      login:
-        max-failures: 5
-        lock-minutes: 30
-        ip-limit: 10
-        ip-window: 60
+    # 登录失败限制
+    login:
+      max-failures: 5
+      lock-minutes: 30
+      ip-limit: 10
+      ip-window: 60
 # JWT配置
 jwt:
   # 密钥（生产环境使用环境变量）
@@ -87,14 +89,14 @@ captcha:
   expire-time: 300
   anti-brush-interval: 60
 
-  # 最简SpringDoc配置
-  springdoc:
-    api-docs:
-      enabled: true
-      path: /v3/api-docs
-    swagger-ui:
-      enabled: true
-      path: /swagger-ui.html  # Swagger UI地址
+# 最简SpringDoc配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html  # Swagger UI地址
 # 日志
 logging:
   level:

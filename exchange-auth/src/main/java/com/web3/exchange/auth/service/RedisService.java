@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -98,7 +99,15 @@ public class RedisService {
      */
     public Set<String> sMembers(String key) {
         try {
-            return (Set<String>) redisTemplate.opsForSet().members(key);
+            Set<Object> members = redisTemplate.opsForSet().members(key);
+            if (members == null || members.isEmpty()) {
+                return null;
+            }
+            Set<String> result = new HashSet<>();
+            for (Object member : members) {
+                result.add(String.valueOf(member));
+            }
+            return result;
         } catch (Exception e) {
             log.error("Redis获取集合成员失败 key: {}", key, e);
             return null;

@@ -2,9 +2,12 @@ package com.web3.exchange.auth.controller;
 
 
 import com.web3.exchange.auth.dto.request.LoginRequest;
+import com.web3.exchange.auth.dto.request.RefreshTokenRequest;
 import com.web3.exchange.auth.dto.response.LoginResponse;
 import com.web3.exchange.auth.dto.response.TokenPair;
+import com.web3.exchange.auth.security.jwt.JwtTokenProvider;
 import com.web3.exchange.auth.service.AuthService;
+import com.web3.exchange.common.exception.AuthException;
 import com.web3.exchange.common.model.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,8 +16,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 /**
  * 认证控制器
@@ -27,6 +28,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 登录接口
@@ -46,20 +48,20 @@ public class AuthController {
 
         log.info("登录成功 - 用户ID: {}", response.getUserInfo().getId());
 
-        return Result.success("登录成功", response);
+        return Result.success(response);
     }
 
     /**
      * 刷新令牌
      */
     @PostMapping("/refresh")
-    @Operation(summary = "刷新令牌", description = "使用Refresh Token刷新Access Token")
+    @Operation(summary = "刷新令牌", description = "使用Refresh Token刷新双令牌")
     public Result<TokenPair> refreshToken(
             @Valid @RequestBody RefreshTokenRequest request) {
 
         TokenPair tokenPair = authService.refreshToken(request.getRefreshToken());
 
-        return Result.success("令牌刷新成功", tokenPair);
+        return Result.success(tokenPair);
     }
 
     /**
@@ -72,7 +74,7 @@ public class AuthController {
 
         String newAccessToken = authService.refreshAccessToken(request.getRefreshToken());
 
-        return Result.success("Access Token刷新成功", newAccessToken);
+        return Result.success(newAccessToken);
     }
 
     /**
@@ -89,7 +91,7 @@ public class AuthController {
 
         authService.logout(accessToken, refreshToken);
 
-        return Result.success("登出成功");
+        return Result.success();
     }
 
     /**
@@ -97,11 +99,16 @@ public class AuthController {
      */
     @PostMapping("/logout/all")
     @Operation(summary = "强制所有设备登出", description = "使当前用户的所有令牌失效")
-    public Result<Void> logoutAll() {
-        Long userId = SecurityUtils.getUserId();
+    public Result<Void> logoutAll(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+
+        if (userId == null) {
+            throw new AuthException("无法识别当前用户，缺少 X-User-Id 请求头");
+        }
+
         authService.logoutAll(userId);
 
-        return Result.success("所有设备已登出");
+        return Result.success();
     }
 
     /**
@@ -112,10 +119,10 @@ public class AuthController {
     public Result<Boolean> validateToken(
             @RequestHeader("Authorization") String authHeader) {
 
-        String token = extractToken(authHeader);
-        boolean valid = token != null && jwtTokenProvider.validateAccessToken(token);
+        // 传入完整 Bearer 头，由 JwtTokenProvider 完成前缀剥离与校验
+        boolean valid = authHeader != null && jwtTokenProvider.validateAccessToken(authHeader);
 
-        return Result.success(Map.of("valid", valid));
+        return Result.success(valid);
     }
 
     /**
