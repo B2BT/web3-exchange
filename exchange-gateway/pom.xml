@@ -25,11 +25,25 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
-        <!-- 公共模块（统一响应 Result 等） -->
+        <!-- 公共模块（统一响应 Result 等）
+             注意：网关是 WebFlux/响应式栈。exchange-common 传递引入的
+             spring-boot-starter-web 与 springdoc-openapi-starter-webmvc-ui（Servlet 栈）
+             会导致 Spring Cloud Gateway 运行时启动冲突，必须在此 exclude 掉。
+             网关仅使用 common 中的纯 POJO（Result）与 Jackson，不受影响。 -->
         <dependency>
             <groupId>com.web3.exchange</groupId>
             <artifactId>exchange-common</artifactId>
             <version>1.0.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-web</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springdoc</groupId>
+                    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- JWT 解析与校验 -->

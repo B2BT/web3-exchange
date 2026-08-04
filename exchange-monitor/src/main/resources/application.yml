@@ -1,6 +1,7 @@
+# application.yml
 server:
-  port: 8101
+  port: 8107
 
 spring:
   application:
-    name: exchange-common
+    name: exchange-monitor
