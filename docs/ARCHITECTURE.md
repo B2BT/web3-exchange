@@ -381,7 +381,8 @@ chain  ──▶ topic:CHAIN_CONFIRM（链上确认/充值入账指令）──�
 - **验收**：`mvn clean package` 通过；网关→auth→user 登录链路端到端跑通。
 
 ### Phase 1：资产域（2-3 周）—— 资金账户核心
-- [ ] 新增资产域表（`t_wallet_account/t_asset_ledger/t_deposit/t_withdraw/t_asset_address/t_coin/t_chain`，见附录）。
+> 落地依据：`docs/asset-domain.md`（7 表完整 DDL + 内部 Feign 契约 + 幂等设计）+ `sql/asset.sql`（独立建表脚本）。
+- [ ] 新增资产域表（`t_wallet_account/t_asset_ledger/t_deposit/t_withdraw/t_asset_address/t_coin/t_chain`，见附录与 `docs/asset-domain.md`）。
 - [ ] `exchange-asset`：钱包账户 CRUD、余额查询、冻结/解冻/过户（内部 Feign 接口）。
 - [ ] 资产流水机制：所有变动写 `t_asset_ledger`，幂等 + 行锁。
 - [ ] 引入 RocketMQ（本地单机起步），建立主题规范与事务消息骨架。
@@ -421,6 +422,8 @@ chain  ──▶ topic:CHAIN_CONFIRM（链上确认/充值入账指令）──�
 > 所有表继承 `BaseEntity` 系统字段（id/create_by/create_time/update_by/update_time/is_deleted/version/tenant_id），逻辑删除 + 乐观锁 + 雪花 ID，此处仅列业务字段。
 
 ### A1. 资产域
+
+> 落地细化（完整 DDL + 内部 Feign 契约 + 幂等/并发设计）见 `docs/asset-domain.md`。**金额精度约定：本域统一采用 `BIGINT`（币种最小单位，由 `t_coin.decimals` 定义），替代下文附录草稿中的 `decimal(38,18)`**，以消除浮点尾差、保证对账精确；取舍分析见 `docs/asset-domain.md` §2。
 
 **t_wallet_account（钱包账户）**
 | 字段 | 类型 | 说明 |
