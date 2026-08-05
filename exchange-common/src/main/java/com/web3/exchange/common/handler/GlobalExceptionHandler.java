@@ -22,7 +22,6 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.servlet.View;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -40,7 +39,6 @@ public class GlobalExceptionHandler {
 
     private final HttpServletRequest request;
     private final ObjectMapper objectMapper;
-    private final View error;
 
     /**
      * 处理业务异常
@@ -310,7 +308,8 @@ public class GlobalExceptionHandler {
      * @return
      */
     private ResponseEntity<Result<?>> buildResponse(BaseException e) {
-        Result<?> result = Result.error(e);
+        // 使用异常自身的 code 作为 body 中的业务状态码（语义码），HTTP 状态码另行归一化
+        Result<?> result = Result.error(e.getCode(), e.getMessage());
 
         // 设置请求ID
         String requestId = request.getHeader("X-Requested-Id");
