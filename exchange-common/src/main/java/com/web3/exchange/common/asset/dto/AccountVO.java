@@ -7,7 +7,9 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 钱包账户视图（金额单位 = 最小单位）
+ * 钱包账户视图（跨模块复用，供 Feign/外部返回钱包账户信息）。
+ * <p><b>金额单位 = 该币种最小单位</b>（由 t_coin.decimals 定义），而非业务精度小数；
+ * 保持三余额不变式 available + frozen == total。version 为乐观锁版本，仅供查询/校验。</p>
  */
 @Data
 @Schema(description = "钱包账户视图")

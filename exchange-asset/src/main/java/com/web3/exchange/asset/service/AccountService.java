@@ -6,6 +6,11 @@ import com.web3.exchange.common.asset.dto.AccountVO;
 
 import java.util.List;
 
+/**
+ * 账户服务——钱包账户的开户、余额查询与行锁锁定。
+ * <p>开户幂等、每人每币种一账户；资金变动前必须先经 lockByUserAndSymbol
+ * 以 FOR UPDATE 行锁锁定账户，保证并发资金操作串行化。</p>
+ */
 public interface AccountService extends IService<Account> {
 
     /**

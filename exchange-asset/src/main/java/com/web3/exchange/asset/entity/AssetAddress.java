@@ -9,7 +9,17 @@ import lombok.experimental.Accessors;
 import java.time.LocalDateTime;
 
 /**
- * 充币地址表
+ * 充币地址表（t_asset_address）——用户用于充值的链上收款地址。
+ * <p>
+ * 业务角色：为每个用户按链/币种生成专属充币地址（或复用热钱包派生地址），
+ * chain 服务据此识别链上入账归属用户。同一链上地址只能归属一次
+ * （唯一索引 uk_chain_address(chain_code, address)），防地址复用冲突。
+ * </p>
+ * <p>
+ * 地址类型 address_type：1=用户充币地址，2=热钱包，3=冷钱包；
+ * memo 记录 TRON 等链的地址 Tag；isActive 是否启用；lastUsedTime 最近使用时间。
+ * 冷热钱包地址派生、热钱包轮换等能力将在 Phase 2 完善。
+ * </p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

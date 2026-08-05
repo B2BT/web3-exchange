@@ -9,7 +9,9 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 冻结请求
+ * 冻结请求（order 服务下单时调用 asset 冻结）。
+ * <p>requestId 由<b>调用方生成</b>且语义确定（同一订单重复发起时不变），asset 靠其幂等
+ * 去重——重复请求直接返回首次结果，不重复扣减。amount 为最小单位整数。</p>
  */
 @Data
 @Schema(description = "冻结请求")

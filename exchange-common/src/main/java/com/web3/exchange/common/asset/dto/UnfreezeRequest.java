@@ -9,7 +9,9 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 解冻请求
+ * 解冻请求（order 服务撤单时调用 asset 解冻）。
+ * <p>requestId 由<b>调用方生成</b>且语义确定，asset 靠其幂等去重；amount 为最小单位整数，
+ * 不得超过当前冻结余额，否则资产服务抛 409。</p>
  */
 @Data
 @Schema(description = "解冻请求")

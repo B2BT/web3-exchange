@@ -9,7 +9,9 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 过户请求（成交结算：买卖双方同币种划转）
+ * 过户请求（成交结算：买卖双方同币种划转）。
+ * <p>语义：fromUserId 的<b>冻结余额</b> → toUserId 的<b>可用余额</b>（买方冻结扣减、卖方可用增加）。
+ * requestId 由<b>调用方生成</b>（通常取成交单号 t_trade.id）用于幂等去重；amount 为最小单位整数。</p>
  */
 @Data
 @Schema(description = "过户请求")

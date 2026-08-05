@@ -14,7 +14,14 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import java.time.LocalDateTime;
 
 /**
- * 资产模块 MyBatis-Plus 配置：分页 + 乐观锁 + 防全表更新 + 公共字段填充
+ * 资产模块 MyBatis-Plus 配置：分页 + 乐观锁 + 防全表更新 + 公共字段自动填充。
+ * <p>
+ * 业务意义：①分页拦截器（maxLimit=1000 防超大分页）支撑流水/账户分页查询；
+ * ②乐观锁拦截器配合实体 @Version，为余额更新提供并发兜底（防跨实例超扣）；
+ * ③防全表更新/删除拦截（BlockAttack）防止误操作毁坏资产数据；
+ * ④公共字段填充自动写入 createBy/createTime/updateTime/isDeleted 等系统字段。
+ * 开启事务管理以支撑「写流水 + 更新余额」的原子性。
+ * </p>
  */
 @Configuration
 @EnableTransactionManagement

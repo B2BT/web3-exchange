@@ -32,6 +32,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 认证服务实现——登录、注册、改密、重置密码、令牌刷新与登出。
+ * <p>
+ * 职责与设计要点：
+ * ①登录走 Spring Security 认证，开启 2FA 的用户须额外通过 {@link TotpUtil} 校验动态码；
+ * ②注册先校验图形验证码再经 Feign 调 user 服务落库（密码不在此存储，仅透传）；
+ * ③改密/重置通过 Feign 调 user 服务更新密码（user 端 BCrypt 加密）；
+ * ④登录成功后签发双令牌（access/refresh），登出/强退时加入黑名单吊销。
+ * 本实现通过 user 服务完成真正的用户数据读写，自身不持有用户表。
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j

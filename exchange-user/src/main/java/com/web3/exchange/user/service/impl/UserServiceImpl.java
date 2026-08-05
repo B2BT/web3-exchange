@@ -25,7 +25,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 用户服务实现
+ * 用户服务实现——用户注册、资料、KYC、2FA、密码、等级的落库逻辑。
+ * <p>
+ * 设计要点：
+ * ①注册保证 username/email/phone 唯一，密码 BCrypt 加密后落库，处理邀请码裂变并生成自身邀请码；
+ * ②KYC 提交后置「审核中」状态，已审核/审核中不可重复提交，满足交易所合规实名要求；
+ * ③2FA 密钥按 RFC 4648 base32 生成、与 Google Authenticator 兼容，已开启则返回现有密钥；
+ * ④密码更新由 auth 服务经 Feign 触发，本实现只负责 BCrypt 编码落库与记录更新时间。
+ * 对外暴露的 VO 均经 {@link #toUserVO} 脱敏，避免泄露敏感字段。
+ * </p>
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -47,6 +55,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 注册新用户。
+     * <p>流程：唯一性校验（username/email/phone）→ 处理邀请码（无效则拒绝）→ BCrypt 编码密码 →
+     * 生成自身唯一邀请码 → 设默认状态/等级 NORMAL、KYC 与 2FA 未开启 → 落库。
+     * 全部在同一事务内完成，任一环节失败整体回滚。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserVO register(RegisterDTO dto) {
@@ -99,6 +113,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return toUserVO(user);
     }
 
+    /**
+     * 修改用户资料（昵称/邮箱/手机/头像/真实姓名）。
+     * <p>邮箱/手机改动前做唯一性校验（排除自身），避免与他人冲突；动态拼接更新字段。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserVO updateProfile(Long id, UpdateProfileDTO dto) {
@@ -134,6 +152,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return toUserVO(requireUser(id));
     }
 
+    /**
+     * 提交 KYC 实名认证。
+     * <p>业务规则：已「审核中」(1) 或「已通过」(2) 的用户禁止重复提交；提交后写入实名信息
+     * （姓名/证件类型/证件号/正反照）并置状态为「审核中」、认证等级默认 1。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void submitKyc(Long id, KYCSubmitDTO dto) {
@@ -164,6 +187,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return new KycStatusVO(user.getKycStatus(), user.getKycLevel());
     }
 
+    /**
+     * 开启 2FA。
+     * <p>业务要点：若已开启且有密钥则直接返回现有密钥（不重复生成，保证前端二维码与
+     * 后端密钥一致）；否则生成 RFC 4648 base32 密钥、置 twoFactorEnabled=1 并落库，
+     * 返回密钥供前端生成 Google Authenticator 二维码。开启后登录须校验 TOTP 动态码。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TwoFactorEnableVO enableTwoFactor(Long id) {

@@ -9,7 +9,9 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 资金流水视图
+ * 资金流水视图（跨模块复用，资金操作返回/流水查询结果）。
+ * <p><b>金额单位 = 最小单位</b>。amount 恒正；before/after 为变动前后余额，用于对账审计；
+ * requestId 为幂等键；direction 见 Direction 常量，bizType 见 BizType 常量。</p>
  */
 @Data
 @Schema(description = "资金流水视图")

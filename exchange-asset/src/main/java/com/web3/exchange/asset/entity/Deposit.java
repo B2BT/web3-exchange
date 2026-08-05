@@ -7,7 +7,16 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 /**
- * 充值记录表
+ * 充值记录表（t_deposit）——记录每笔链上充值交易及入账状态。
+ * <p>
+ * 业务角色：chain 服务扫描链上交易命中用户充币地址后，先落一条充值记录，
+ * 待区块确认数达标后调用 asset 的 credit 入账。tx_hash 全局唯一（uk_tx_hash），
+ * 保证<b>同一笔链上交易只能入账一次</b>，杜绝重复入账；request_id 为入账时的幂等号。
+ * </p>
+ * <p>
+ * 状态流转 status：0=监听中 → 1=待确认 → 2=已入账；3=失败。
+ * ledger_id 记录入账时生成的资产流水ID，用于追溯「充值 → 入账流水」的关联。
+ * </p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

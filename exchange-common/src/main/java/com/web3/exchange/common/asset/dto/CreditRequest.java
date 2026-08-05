@@ -9,7 +9,9 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 充值入账请求（chain → asset）
+ * 充值入账请求（chain → asset，链上到账确认后入账）。
+ * <p>requestId 由<b>调用方生成</b>（可由 depositId 派生），asset 靠其幂等去重并叠加
+ * t_deposit.tx_hash 唯一索引防同一笔链上交易重复入账；amount 为最小单位整数（已扣链上手续费）。</p>
  */
 @Data
 @Schema(description = "充值入账请求")

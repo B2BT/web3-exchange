@@ -9,7 +9,16 @@ import lombok.experimental.Accessors;
 import java.time.LocalDateTime;
 
 /**
- * 提现记录表
+ * 提现记录表（t_withdraw）——记录用户出金申请及审核、上链状态。
+ * <p>
+ * 业务角色：用户申请提现后落一条记录，经历审核与上链；实际到账金额
+ * realAmount = amount - fee（fee 为平台手续费，均以最小单位整数存储）。
+ * request_id 为申请时的幂等号（uk_request_id），防重复申请/重复处理。
+ * </p>
+ * <p>
+ * 状态流转 status：0=待审核 → 1=审核中 → 2=处理中(已冻结上链) → 3=成功；
+ * 4=拒绝；5=失败回滚。freezeLedgerId 记录提现冻结时生成的流水ID，用于追溯。
+ * </p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

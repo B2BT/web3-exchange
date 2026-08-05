@@ -7,7 +7,19 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 /**
- * 资产流水表（append-only 不可变）
+ * 资产流水表（t_asset_ledger）——资金变动的不可变审计账本。
+ * <p>
+ * 业务角色：每一笔资金变动（冻结/解冻/过户/充值/提现…）都写入一条流水，
+ * 记录变动前后余额（before/after），用于对账与审计。本表为 <b>append-only</b>：
+ * 业务上禁止 UPDATE/DELETE，只允许新增，以保证账本可追溯、可复核。
+ * </p>
+ * <p>
+ * 幂等设计：request_id 由调用方生成并全局唯一（唯一索引 uk_request_id 兜底），
+ * 同一 request_id 重复请求直接返回首次结果，杜绝重复扣减/入账；同时
+ * uk_biz_no(user_id, biz_type, ref_no) 在业务单号维度防同单重复入账。
+ * direction 为资金方向（见 Direction 常量），biz_type 为业务类型（见 BizType 常量），
+ * amount 恒为正数（最小单位）。
+ * </p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

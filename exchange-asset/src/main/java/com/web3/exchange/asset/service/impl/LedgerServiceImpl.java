@@ -21,6 +21,19 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 资金流水服务实现——<b>资产域资金变动的唯一入口</b>。
+ * <p>
+ * 冻结/解冻/过户/充值入账都收敛到 {@link #doChange} 统一完成，保证「写流水 + 更新余额」
+ * 在同一本地事务内原子执行，并叠加行锁、乐观锁、幂等三重保障，确保资金
+ * 不多、不少、不重复扣减（资金安全的核心）。
+ * </p>
+ * <p>
+ * 对外提供的资金操作（freeze/unfreeze/transfer/credit）均要求调用方先经
+ * {@code AccountService.lockByUserAndSymbol} 以 SELECT ... FOR UPDATE 行锁锁定账户，
+ * 将同一账户的并发资金操作串行化；transfer 会按 userId 升序锁定双方账户以防死锁。
+ * </p>
+ */
 @Service
 public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> implements LedgerService {
 
@@ -31,6 +44,12 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
     }
 
     // ==================== 冻结 ====================
+
+    /**
+     * 冻结：把用户可用余额转入冻结余额（下单锁仓，防止「一边花一边用」）。
+     * 先以行锁锁定账户，再交由 {@link #doChange} 按方向 FROZEN 执行，
+     * 可用余额不足则抛 409；同一 requestId 重复请求返回首次结果。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LedgerVO freeze(FreezeRequest req) {
@@ -42,6 +61,12 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
     }
 
     // ==================== 解冻 ====================
+
+    /**
+     * 解冻：把冻结余额释放回可用余额（撤单时退回锁仓）。
+     * 先以行锁锁定账户，再交由 {@link #doChange} 按方向 UNFROZEN 执行，
+     * 冻结余额不足则抛 409；同一 requestId 重复请求返回首次结果。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LedgerVO unfreeze(UnfreezeRequest req) {
@@ -53,6 +78,15 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
     }
 
     // ==================== 过户（单事务：from 冻结转出 + to 可用转入） ====================
+
+    /**
+     * 过户（成交结算）：把转出方的<b>冻结余额</b>划给转入方的<b>可用余额</b>。
+     * 整个流程在同一事务内完成，分两步各写一条流水：
+     * from 按 FROZEN_OUT 冻结减少（写 TRANSFER_OUT），to 按 IN 可用增加（写 TRANSFER_IN），
+     * 任一步失败整体回滚，保证双边账实一致。
+     * <p>并发/幂等设计：先按 userId 升序加锁双方账户，避免并发互转死锁；
+     * 以「requestId + {@code _OUT}」作为转出流水的幂等键，命中即视为整笔过户已完成并原样返回。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LedgerVO transfer(TransferRequest req) {
@@ -76,6 +110,13 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
     }
 
     // ==================== 充值入账 ====================
+
+    /**
+     * 充值入账：链上到账确认后给用户可用余额加钱。
+     * 由 chain 服务扫描确认后调用；先以行锁锁定账户，再交由 {@link #doChange}
+     * 按方向 IN（写 DEPOSIT 流水）执行；requestId 由 depositId 派生，
+     * 唯一索引兜底防止同一笔充值重复入账。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LedgerVO credit(CreditRequest req) {
@@ -87,6 +128,10 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
     }
 
     // ==================== 流水分页 ====================
+
+    /**
+     * 分页查询资产流水（供对账/审计）。支持按账户过滤，size 限界 1~100。
+     */
     @Override
     public Page<LedgerVO> pageLedgers(Long accountId, int page, int size) {
         Page<Ledger> p = this.page(new Page<>(Math.max(page, 1), Math.min(Math.max(size, 1), 100)),
@@ -99,7 +144,33 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
     }
 
     // ==================== 核心：资金变动统一封装 ====================
-    // 前提：account 已被 SELECT ... FOR UPDATE 行锁锁定（当前事务内）
+
+    /**
+     * 资金变动核心方法——所有资金操作（冻结/解冻/过户/入账）最终都汇聚到这里，
+     * 保证「写流水 + 更新余额」原子完成，并满足幂等与并发安全。完整流程：
+     * <ol>
+     *   <li><b>幂等回读</b>：先按 requestId 查流水，已存在则直接返回首次结果（不重复执行）；</li>
+     *   <li><b>算 before/after</b>：按资金方向 {@code Direction} 计算变动前后余额，
+     *       余额不足抛 409 业务错误；始终维护不变式 available + frozen == total；</li>
+     *   <li><b>写流水</b>：向 t_asset_ledger 追加一条不可变流水（append-only），
+     *       request_id 唯一索引兜底幂等——若并发撞唯一索引则回读既有流水返回；</li>
+     *   <li><b>更新余额</b>：以乐观锁（version）条件更新账户行，冲突则抛异常整体回滚
+     *       （连同已写入的流水一起回滚），保证账实一致。</li>
+     * </ol>
+     * <p>
+     * 前提：入参 account 必须已在<b>当前事务内</b>被 SELECT ... FOR UPDATE 行锁锁定
+     * （由调用方在进入本方法前完成），从而将同一账户的资金操作串行化，杜绝并发超扣。
+     * </p>
+     *
+     * @param requestId 幂等请求号（调用方生成，同一业务重复发起时保持不变）
+     * @param acct      已被行锁锁定的账户
+     * @param bizType   业务类型（见 {@link BizType}）
+     * @param direction 资金方向（见 {@link Direction}）
+     * @param amount    变动金额（最小单位，恒正）
+     * @param refNo     业务单号（orderId/withdrawId/depositId）
+     * @param remark    备注
+     * @return 本次资金变动的流水视图
+     */
     private LedgerVO doChange(String requestId, Account acct, String bizType, int direction,
                               long amount, String refNo, String remark) {
         // 1. 幂等回读：同 request_id 已存在 → 直接返回首次结果

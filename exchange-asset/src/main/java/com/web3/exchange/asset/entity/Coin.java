@@ -7,7 +7,18 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 /**
- * 币种表
+ * 币种表（t_coin）——平台支持的交易币种配置。
+ * <p>
+ * 业务角色：定义每种币（BTC/ETH/USDT…）的基础属性与资金规则，是充值/提现/账户的
+ * 数据源，币种配置驱动业务、代码不写死。symbol 全局唯一（uk_symbol）。
+ * </p>
+ * <p>
+ * 关键字段业务含义：decimals 为该币种「最小单位位数」（USDT=6、ETH=18、BTC=8），
+ * 资产域所有金额均以该最小单位的整数存储与换算（见 AmountUtil）；
+ * withdrawFee/min/maxWithdraw/dailyWithdrawLimit 等为提现风控与手续费规则；
+ * withdrawEnabled/depositEnabled 控制充提开关；coinType 区分原生币(COIN)与代币(TOKEN)，
+ * 代币才有 contractAddress，原生币该项为空。
+ * </p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
