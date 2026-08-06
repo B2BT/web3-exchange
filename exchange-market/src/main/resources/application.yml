@@ -16,6 +16,64 @@ spring:
         namespace: public
         group: DEFAULT_GROUP
 
+  datasource:
+    # Druid连接池配置
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+
+    # 连接池配置
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+      filters: stat,wall,log4j
+      use-global-data-source-stat: true
+
+# MyBatis-Plus配置
+mybatis-plus:
+  # 支持通配符
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体类扫描
+  type-aliases-package: com.web3.exchange.market.entity
+  # 全局配置
+  global-config:
+    db-config:
+      # 主键策略：ASSIGN_ID（雪花算法）
+      id-type: ASSIGN_ID
+      # 表名前缀
+      table-prefix: t_
+      # 逻辑删除配置（实体 @TableLogic 亦生效）
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      # 字段策略
+      insert-strategy: not_null
+      update-strategy: not_null
+  # MyBatis原生配置
+  configuration:
+    # 开启驼峰命名
+    map-underscore-to-camel-case: true
+    # 日志实现
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    # 自动映射行为
+    auto-mapping-behavior: full
+    # 二级缓存
+    cache-enabled: true
+    # 返回null字段
+    call-setters-on-nulls: true
+
 # 最简SpringDoc配置
 springdoc:
   api-docs:
@@ -28,6 +86,12 @@ springdoc:
 # =============== RocketMQ（仅消费 ORDER-TRADE，无需 producer group） ===============
 rocketmq:
   name-server: 127.0.0.1:9876
+
+# =============== 行情聚合/落库配置 ===============
+market:
+  persist:
+    # 已关闭窗口批量落库到 t_kline 的周期(毫秒)
+    interval-ms: 5000
 
 logging:
   level:

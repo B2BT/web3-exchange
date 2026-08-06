@@ -1,7 +1,59 @@
 # application.yml
 server:
-  port: 8107
+  port: 8108
 
 spring:
   application:
     name: exchange-monitor
+
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      discovery:
+        namespace: public
+        group: DEFAULT_GROUP
+
+  main:
+    allow-bean-definition-overriding: true
+
+# 监控域业务配置
+monitor:
+  # 健康检查轮询间隔（毫秒），@Scheduled fixedDelay
+  health-interval-ms: 30000
+  # 指标采集间隔（毫秒）
+  metrics-interval-ms: 60000
+  # 探测各实例时的 HTTP 超时（毫秒）
+  probe-timeout-ms: 3000
+  # 需要监控的服务名（不填则自动发现 nacos 中全部 exchange-* 服务；网关注册名为 gateway-service）
+  services:
+    - exchange-user
+    - exchange-auth
+    - gateway-service
+    - exchange-asset
+    - exchange-order
+    - exchange-chain
+    - exchange-market
+    - exchange-notify
+
+# 对外暴露本模块自身的健康端点（便于监控链路自检）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# 最简SpringDoc配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.web3.exchange.monitor: info

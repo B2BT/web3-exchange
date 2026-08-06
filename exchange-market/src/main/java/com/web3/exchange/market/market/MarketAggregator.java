@@ -169,6 +169,24 @@ public class MarketAggregator {
         return seenTrades.stream().anyMatch(s -> s.startsWith(tradeNo + ":"));
     }
 
+    /**
+     * 从 DB 回填一笔已持久化的 K线到内存 store（重启重建用）。
+     * 幂等：同 (symbol, period, openTime) 已存在则不覆盖（以内存实时聚合为准）。
+     */
+    public void restoreFromDb(com.web3.exchange.market.entity.KlineRow row) {
+        KlineInterval iv = KlineInterval.fromName(row.getPeriod());
+        if (iv == null) {
+            return;
+        }
+        Kline k = new Kline(row.getSymbol(), row.getPeriod(), row.getWindowStart(),
+                row.getOpen(), row.getVolume(), row.getQuoteVolume());
+        k.setHigh(row.getHigh());
+        k.setLow(row.getLow());
+        k.setClose(row.getClose());
+        ConcurrentHashMap<Long, Kline> map = intervalMap(row.getSymbol(), iv);
+        map.putIfAbsent(row.getWindowStart(), k);
+    }
+
     /** 获取某 symbol×interval 的窗口 map（惰性建内层容器）。 */
     private ConcurrentHashMap<Long, Kline> intervalMap(String symbol, KlineInterval iv) {
         ConcurrentHashMap<String, ConcurrentHashMap<Long, Kline>> byInterval =
@@ -176,8 +194,8 @@ public class MarketAggregator {
         return byInterval.computeIfAbsent(iv.intervalName(), k -> new ConcurrentHashMap<>());
     }
 
-    /** 暴露内部 store 供诊断（返回只读视图意义不大，此处直接返回内部引用仅供测试）。 */
-    Map<String, ConcurrentHashMap<String, ConcurrentHashMap<Long, Kline>>> rawStore() {
+    /** 暴露内部 store 供持久化扫描/测试（返回内部引用仅供只读遍历）。 */
+    public Map<String, ConcurrentHashMap<String, ConcurrentHashMap<Long, Kline>>> rawStore() {
         return store;
     }
 }

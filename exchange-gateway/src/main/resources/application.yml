@@ -38,21 +38,31 @@ spring:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 redis-rate-limiter.requestedTokens: 1
+        # order 服务：无 context-path，Controller 映射 /api/order/**
+        - id: order-service
+          uri: lb://exchange-order
+          predicates:
+            - Path=/api/order/**
+        # chain 服务：无 context-path，Controller 映射 /api/chain/**
+        - id: chain-service
+          uri: lb://exchange-chain
+          predicates:
+            - Path=/api/chain/**
+        # market 服务：无 context-path，Controller 映射 /api/market/**
+        - id: market-service
+          uri: lb://exchange-market
+          predicates:
+            - Path=/api/market/**
+        # notify 服务：无 context-path，Controller 映射 /api/notify/**
+        - id: notify-service
+          uri: lb://exchange-notify
+          predicates:
+            - Path=/api/notify/**
         # 行情/通知 WebSocket 推送路由（预留）
-        # 说明：exchange-market 服务尚未实现，uri 目标不可用。
-        # 启用方法：待 exchange-market 部署并注册到 Nacos 后，去掉本注释即可生效。
-        # Spring Cloud Gateway 原生支持 WebSocket 升级转发（含 spring-cloud-gateway-server 即可，无需额外 websocket 依赖）。
         # - id: market-websocket
         #   uri: lb://exchange-market
         #   predicates:
         #     - Path=/ws/**
-        # order 服务尚未实现/启动，先注释，避免误导
-        # - id: order-service
-        #   uri: lb://exchange-order
-        #   predicates:
-        #     - Path=/api/order/**
-        #   filters:
-        #     - StripPrefix=1
     nacos:
       discovery:
         server-addr: localhost:8848
