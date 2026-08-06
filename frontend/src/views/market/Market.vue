@@ -18,6 +18,8 @@ const errorMsg = ref('')
 const parts = computed(() => symbolParts(currentSymbol.value))
 const quoteDecimals = computed(() => coinDecimals(parts.value.quote))
 const baseDecimals = computed(() => coinDecimals(parts.value.base))
+/** 价格统一精度（交易对价格 8 位小数） */
+const PRICE_DEC = 8
 
 const currentTicker = computed<TickerItem | null>(
   () => tickers.value.find((t) => t.symbol === currentSymbol.value) || null,
@@ -107,7 +109,7 @@ onMounted(loadTickers)
         <el-col :span="6">
           <div class="tick-label">{{ currentSymbol }} 最新价</div>
           <div class="tick-value" :class="changeClass">
-            {{ formatLong(currentTicker.lastPrice, quoteDecimals, 8) }}
+            {{ formatLong(currentTicker.lastPrice, PRICE_DEC, 6) }}
           </div>
         </el-col>
         <el-col :span="4">
@@ -118,11 +120,11 @@ onMounted(loadTickers)
         </el-col>
         <el-col :span="4">
           <div class="tick-label">24h最高</div>
-          <div class="tick-value">{{ formatLong(currentTicker.high24h, quoteDecimals, 8) }}</div>
+          <div class="tick-value">{{ formatLong(currentTicker.high24h, PRICE_DEC, 6) }}</div>
         </el-col>
         <el-col :span="4">
           <div class="tick-label">24h最低</div>
-          <div class="tick-value">{{ formatLong(currentTicker.low24h, quoteDecimals, 8) }}</div>
+          <div class="tick-value">{{ formatLong(currentTicker.low24h, PRICE_DEC, 6) }}</div>
         </el-col>
         <el-col :span="3">
           <div class="tick-label">24h量</div>

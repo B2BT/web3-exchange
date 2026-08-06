@@ -17,8 +17,11 @@ export function formatLong(
   if (value === null || value === undefined || value === '') return '--'
   const n = typeof value === 'string' ? Number(value) : value
   if (!Number.isFinite(n)) return '--'
+  // 先做浮点稳定化（避免 Long/1e^decimals 除法后的尾部噪音），再定点显示
   const human = n / Math.pow(10, decimals)
-  const fixed = human.toFixed(displayDecimals)
+  const factor = Math.pow(10, displayDecimals)
+  const rounded = Math.round(human * factor) / factor
+  const fixed = rounded.toFixed(displayDecimals)
   return fixed.replace(/\.?0+$/, '') || '0'
 }
 
