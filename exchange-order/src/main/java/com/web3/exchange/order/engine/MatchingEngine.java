@@ -2,6 +2,8 @@ package com.web3.exchange.order.engine;
 
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.web3.exchange.order.constant.OrderConstant;
+import com.web3.exchange.order.dto.DepthLevel;
+import com.web3.exchange.order.dto.DepthVO;
 import com.web3.exchange.order.entity.Order;
 import com.web3.exchange.order.entity.Trade;
 import com.web3.exchange.order.util.QuoteCalculator.PrecisionContext;
@@ -97,6 +99,37 @@ public class MatchingEngine {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * 某交易对内存盘口深度快照（公开只读行情）。按交易对加锁后聚合，保证盘口一致性。
+     *
+     * @param symbol 交易对
+     * @param limit  每方向最多返回的档数（≥0）
+     * @return 深度盘口；交易对尚无盘口时返回空 bids/asks
+     */
+    public DepthVO depth(String symbol, int limit) {
+        ReentrantLock lock = locks.computeIfAbsent(symbol, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            OrderBook book = books.get(symbol);
+            if (book == null) {
+                return new DepthVO(symbol, new ArrayList<>(), new ArrayList<>());
+            }
+            OrderBook.DepthSnapshot snap = book.depth(limit);
+            return new DepthVO(symbol, toLevels(snap.bids), toLevels(snap.asks));
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** long[]{price, quantity} → DepthLevel 列表。 */
+    private static List<DepthLevel> toLevels(List<long[]> levels) {
+        List<DepthLevel> list = new ArrayList<>(levels.size());
+        for (long[] e : levels) {
+            list.add(new DepthLevel(e[0], e[1]));
+        }
+        return list;
     }
 
     private Long withBook(String symbol, java.util.function.Function<OrderBook, Order> pick,

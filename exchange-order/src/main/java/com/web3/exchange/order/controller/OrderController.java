@@ -2,6 +2,7 @@ package com.web3.exchange.order.controller;
 
 import com.web3.exchange.common.model.Result;
 import com.web3.exchange.order.dto.CancelOrderRequest;
+import com.web3.exchange.order.dto.DepthVO;
 import com.web3.exchange.order.dto.OrderVO;
 import com.web3.exchange.order.dto.PlaceOrderRequest;
 import com.web3.exchange.order.dto.TradeVO;
@@ -72,5 +73,27 @@ public class OrderController {
     public Result<List<TradeVO>> trades(@RequestParam("userId") Long userId,
                                         @RequestParam("orderNo") String orderNo) {
         return Result.success(orderService.listTrades(userId, orderNo));
+    }
+
+    /**
+     * 深度盘口（公开只读行情）：MatchingEngine 内存盘口聚合，bids 降序、asks 升序，各取前 limit 档。
+     */
+    @Operation(summary = "深度盘口")
+    @GetMapping("/depth")
+    public Result<DepthVO> depth(@RequestParam("symbol") String symbol,
+                                 @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        int capped = Math.max(1, Math.min(limit, 50));
+        return Result.success(orderService.getDepth(symbol, capped));
+    }
+
+    /**
+     * 最近成交（公开只读行情）：t_trade 按 trade_time 降序取前 limit 条，side 用 takerSide。
+     */
+    @Operation(summary = "最近成交")
+    @GetMapping("/recent-trades")
+    public Result<List<TradeVO>> recentTrades(@RequestParam("symbol") String symbol,
+                                              @RequestParam(value = "limit", defaultValue = "50") int limit) {
+        int capped = Math.max(1, Math.min(limit, 200));
+        return Result.success(orderService.listRecentTrades(symbol, capped));
     }
 }

@@ -19,4 +19,10 @@ public interface TradeMapper extends BaseMapper<Trade> {
      */
     @Select("SELECT * FROM t_trade WHERE symbol = #{symbol} AND settle_status = 2 AND is_deleted = 0 LIMIT 200")
     List<Trade> selectPendingSettle(@Param("symbol") String symbol);
+
+    /**
+     * 查询某交易对最近成交（按 trade_time 降序取前 limit 条），供公开行情接口使用。
+     */
+    @Select("SELECT * FROM t_trade WHERE symbol = #{symbol} AND is_deleted = 0 ORDER BY trade_time DESC LIMIT #{limit}")
+    List<Trade> selectRecentBySymbol(@Param("symbol") String symbol, @Param("limit") int limit);
 }

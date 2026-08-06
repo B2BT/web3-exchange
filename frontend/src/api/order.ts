@@ -60,6 +60,37 @@ export interface PlaceOrderResult {
   trades?: TradeItem[]
 }
 
+/** 深度盘口单档（price/quantity 均为 Long 最小单位） */
+export interface DepthLevel {
+  price?: number | null
+  quantity?: number | null
+}
+
+/** 深度盘口视图 */
+export interface DepthItem {
+  symbol?: string
+  /** 买盘（价格降序，最高价在前） */
+  bids?: DepthLevel[]
+  /** 卖盘（价格升序，最低价在前） */
+  asks?: DepthLevel[]
+}
+
+/** 最近成交视图（按 tradeTime 降序，最新在前） */
+export interface RecentTradeItem {
+  id?: number | string
+  tradeNo?: string
+  symbol?: string
+  /** 价格（计价币最小单位 Long） */
+  price?: number | null
+  /** 数量（基础币最小单位 Long） */
+  quantity?: number | null
+  /** 成交额（计价币最小单位 Long） */
+  quoteAmount?: number | null
+  /** 方向：1=主动买 2=主动卖（后端字段 takerSide） */
+  takerSide?: number
+  tradeTime?: string
+}
+
 /** 下单 */
 export function placeOrder(data: PlaceOrderRequest): Promise<PlaceOrderResult> {
   return request<PlaceOrderResult>({ url: '/order/place', method: 'post', data })
@@ -73,4 +104,17 @@ export function getOrder(userId: string | number, orderNo: string): Promise<Orde
 /** 查询订单成交明细 */
 export function getTrades(userId: string | number, orderNo: string): Promise<TradeItem[]> {
   return request<TradeItem[]>({ url: '/order/trades', method: 'get', params: { userId, orderNo } })
+}
+
+/** 深度盘口（公开只读行情，带 symbol + limit） */
+export function depth(params: { symbol: string; limit?: number }): Promise<DepthItem> {
+  return request<DepthItem>({ url: '/order/depth', method: 'get', params })
+}
+
+/** 最近成交（公开只读行情，按 tradeTime 降序取前 limit） */
+export function recentTrades(params: {
+  symbol: string
+  limit?: number
+}): Promise<RecentTradeItem[]> {
+  return request<RecentTradeItem[]>({ url: '/order/recent-trades', method: 'get', params })
 }

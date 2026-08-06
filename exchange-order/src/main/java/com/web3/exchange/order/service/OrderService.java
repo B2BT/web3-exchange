@@ -5,6 +5,7 @@ import com.web3.exchange.common.asset.dto.FreezeRequest;
 import com.web3.exchange.common.exception.ServiceException;
 import com.web3.exchange.common.model.Result;
 import com.web3.exchange.order.constant.OrderConstant;
+import com.web3.exchange.order.dto.DepthVO;
 import com.web3.exchange.order.dto.OrderVO;
 import com.web3.exchange.order.dto.PlaceOrderRequest;
 import com.web3.exchange.order.dto.TradeVO;
@@ -169,6 +170,17 @@ public class OrderService {
         List<Trade> list = tradeMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Trade>()
                 .and(w -> w.eq(Trade::getTakerOrderNo, orderNo).or().eq(Trade::getMakerOrderNo, orderNo))
                 .orderByAsc(Trade::getId));
+        return list.stream().map(this::toTradeVO).toList();
+    }
+
+    /** 某交易对内存盘口深度（公开只读行情，经 MatchingEngine 聚合）。 */
+    public DepthVO getDepth(String symbol, int limit) {
+        return matchingEngine.depth(symbol, limit);
+    }
+
+    /** 某交易对最近成交（t_trade 按 trade_time 降序取前 limit 条）。 */
+    public List<TradeVO> listRecentTrades(String symbol, int limit) {
+        List<Trade> list = tradeMapper.selectRecentBySymbol(symbol, limit);
         return list.stream().map(this::toTradeVO).toList();
     }
 

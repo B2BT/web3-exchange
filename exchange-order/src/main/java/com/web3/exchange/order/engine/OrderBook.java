@@ -84,6 +84,51 @@ public class OrderBook {
         return removed;
     }
 
+    /**
+     * 深度快照：按价格档聚合每档内所有活跃挂单的 remaining 之和。
+     * <p>bids 按价格<b>降序</b>（最高买价在前），asks 按价格<b>升序</b>（最低卖价在前），
+     * 各取前 {@code limit} 档。每档为 {@code long[]{price, quantity}}，金额/数量均为最小单位。</p>
+     */
+    public static class DepthSnapshot {
+        /** 买盘：{price, quantity}，价格降序 */
+        public final java.util.List<long[]> bids = new java.util.ArrayList<>();
+        /** 卖盘：{price, quantity}，价格升序 */
+        public final java.util.List<long[]> asks = new java.util.ArrayList<>();
+    }
+
+    /**
+     * 聚合盘口深度。遍历 bids/asks 每个价格档，把该档 PriorityQueue 里所有 Order.remaining 求和；
+     * bids 降序取前 limit 档、asks 升序取前 limit 档。
+     *
+     * @param limit 每方向最多返回的档数（≥0）
+     * @return 深度快照（含 bids/asks 两个有序列表）
+     */
+    public DepthSnapshot depth(int limit) {
+        DepthSnapshot snap = new DepthSnapshot();
+        if (limit <= 0) {
+            return snap;
+        }
+        aggregate(bids, snap.bids, limit);
+        aggregate(asks, snap.asks, limit);
+        return snap;
+    }
+
+    /** 单方向聚合：TreeMap 已有序（bids 降序、asks 升序），逐档累加 remaining，取前 limit 档。 */
+    private void aggregate(TreeMap<Long, PriorityQueue<Order>> side, java.util.List<long[]> out, int limit) {
+        for (java.util.Map.Entry<Long, PriorityQueue<Order>> e : side.entrySet()) {
+            if (out.size() >= limit) {
+                break;
+            }
+            long quantity = 0;
+            for (Order o : e.getValue()) {
+                quantity += o.getRemaining();
+            }
+            if (quantity > 0) {
+                out.add(new long[]{e.getKey(), quantity});
+            }
+        }
+    }
+
     /** 某方向盘口是否为空。 */
     public boolean isEmpty(int side) {
         return (side == OrderConstant.SIDE_BUY ? bids : asks).isEmpty();
