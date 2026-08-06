@@ -96,4 +96,14 @@ public class OrderController {
         int capped = Math.max(1, Math.min(limit, 200));
         return Result.success(orderService.listRecentTrades(symbol, capped));
     }
+
+    /**
+     * 查询用户条件单（docs/advanced-orders.md §五）：triggerStatus 可选（null=全部 0=待触发 1=已触发 2=已取消）。
+     */
+    @Operation(summary = "查询条件单")
+    @GetMapping("/triggered")
+    public Result<List<OrderVO>> triggered(@RequestParam("userId") Long userId,
+                                           @RequestParam(value = "triggerStatus", required = false) Integer triggerStatus) {
+        return Result.success(orderService.listTriggeredOrders(userId, triggerStatus));
+    }
 }

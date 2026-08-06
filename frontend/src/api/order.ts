@@ -16,6 +16,12 @@ export interface PlaceOrderRequest {
   quoteAmount?: number | null
   /** 时间策略：0=GTC(长期有效) 1=IOC(立即成交或取消剩余) 2=FOK(全部成交否则取消) 3=PostOnly(只挂单不吃单) */
   timeInForce?: number
+  /** 条件单类型：0=非条件单 1=止盈(涨到触发) 2=止损(跌到触发) */
+  triggerType?: number
+  /** 触发价（计价币最小单位 Long；条件单必填） */
+  triggerPrice?: number
+  /** OCO 关联组号（同组两单一个触发/成交另一个自动取消） */
+  ocoGroup?: string
   /** 客户端幂等号 */
   clientOid?: string
 }

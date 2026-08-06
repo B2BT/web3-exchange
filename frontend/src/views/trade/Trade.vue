@@ -34,6 +34,18 @@ const quantity = ref('')
 const quoteAmount = ref('')
 const submitting = ref(false)
 
+/** 条件单类型：0=非条件单 1=止盈 2=止损 */
+const triggerType = ref<number>(0)
+/** 触发价（人读数值，提交时换算 Long） */
+const triggerPrice = ref('')
+const TRIGGER_OPTIONS = [
+  { label: '无', value: 0 },
+  { label: '止盈', value: 1 },
+  { label: '止损', value: 2 },
+]
+/** 条件单是否启用 */
+const isConditional = computed(() => triggerType.value > 0)
+
 const parts = computed(() => symbolParts(currentSymbol.value))
 const quoteDecimals = computed(() => coinDecimals(parts.value.quote))
 const baseDecimals = computed(() => coinDecimals(parts.value.base))
@@ -100,6 +112,8 @@ function resetFields() {
   price.value = ''
   quantity.value = ''
   quoteAmount.value = ''
+  triggerType.value = 0
+  triggerPrice.value = ''
 }
 
 function switchSide(name: string | number) {
@@ -216,6 +230,12 @@ async function submit() {
     return void ElMessage.warning('请输入有效的卖出数量')
   }
 
+  // 条件单校验：勾选止盈/止损时必须填触发价
+  if (isConditional.value) {
+    if (!triggerPrice.value || Number(triggerPrice.value) <= 0)
+      return void ElMessage.warning('请输入有效的触发价')
+  }
+
   const payload = {
     userId,
     symbol: currentSymbol.value,
@@ -231,6 +251,9 @@ async function submit() {
       : 0,
     // 时间策略：默认 GTC(0)
     timeInForce: timeInForce.value,
+    // 条件单：默认 0(非条件单)；勾选时传触发价（Long 最小单位）
+    triggerType: triggerType.value,
+    triggerPrice: isConditional.value ? toLong(Number(triggerPrice.value), PRICE_DECIMALS) : 0,
   }
 
   submitting.value = true
@@ -242,14 +265,17 @@ async function submit() {
       ElMessage.warning(
         `下单被拒绝：${res.order?.remark || '资金不足或风控拦截（请先充值资产）'}`,
       )
-    } else if (status === 0) {
-      ElMessage.success(`下单成功（挂单中） 单号 ${res.order?.orderNo || ''}`)
-    } else if (status === 2) {
-      ElMessage.success(`下单成功（已成交） 单号 ${res.order?.orderNo || ''}`)
-    } else if (status === 1) {
-      ElMessage.success(`下单成功（部分成交） 单号 ${res.order?.orderNo || ''}`)
     } else {
-      ElMessage.success(`下单成功 单号 ${res.order?.orderNo || ''}`)
+      const condTip = isConditional.value ? '（条件单待触发，最新价触发后自动撮合）' : ''
+      if (status === 0) {
+        ElMessage.success(`下单成功（挂单中） 单号 ${res.order?.orderNo || ''}${condTip}`)
+      } else if (status === 2) {
+        ElMessage.success(`下单成功（已成交） 单号 ${res.order?.orderNo || ''}${condTip}`)
+      } else if (status === 1) {
+        ElMessage.success(`下单成功（部分成交） 单号 ${res.order?.orderNo || ''}${condTip}`)
+      } else {
+        ElMessage.success(`下单成功 单号 ${res.order?.orderNo || ''}${condTip}`)
+      }
     }
     resetFields()
   } catch (e: any) {
@@ -373,6 +399,28 @@ onBeforeUnmount(() => {
           <el-form-item v-if="showQuoteAmount" :label="`买入金额 (${parts.quote})`">
             <el-input v-model="quoteAmount" placeholder="请输入预算金额" />
           </el-form-item>
+
+          <!-- 条件单（仅限价单）：止盈/止损 + 触发价 -->
+          <div v-if="showLimit" class="cond-box">
+            <div class="cond-head">
+              <span class="cond-title">条件单</span>
+              <el-radio-group v-model="triggerType" size="small" class="tif-group">
+                <el-radio-button
+                  v-for="o in TRIGGER_OPTIONS"
+                  :key="o.value"
+                  :value="o.value"
+                >
+                  {{ o.label }}
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+            <el-form-item v-if="isConditional" :label="`触发价 (${parts.quote})`">
+              <el-input
+                v-model="triggerPrice"
+                placeholder="请输入触发价，最新价达到后自动撮合"
+              />
+            </el-form-item>
+          </div>
         </el-form>
 
         <!-- 快捷比例 -->
@@ -525,6 +573,25 @@ onBeforeUnmount(() => {
 .tif-group :deep(.el-radio-button__inner) {
   width: 100%;
   font-size: 12px;
+}
+/* 条件单 */
+.cond-box {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--glass-bg);
+}
+.cond-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.cond-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 /* 预估联动 */
 .est-line {

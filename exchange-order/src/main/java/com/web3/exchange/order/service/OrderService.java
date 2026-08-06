@@ -88,6 +88,11 @@ public class OrderService {
         validate(req, sym, ctx);
         Order order = buildOrder(req, sym, ctx);
 
+        // 条件单（triggerType>0）：下单即冻结、不入撮合盘口，等待行情触发任务激活（docs/advanced-orders.md §三）
+        if (order.getTriggerType() != null && order.getTriggerType() > 0) {
+            return placeConditional(order);
+        }
+
         // 事务：落库 + 冻结 + 撮合 + 落成交/更新双方订单
         MatchingEngine.MatchResult match = transactionTemplate.execute(status -> {
             orderMapper.insert(order);
@@ -148,6 +153,176 @@ public class OrderService {
     }
 
     /**
+     * 条件单下单（docs/advanced-orders.md §三）：<b>下单即冻结、不入撮合盘口</b>。
+     * <p>status=NEW + trigger_status=0 落库；冻结按 triggerPrice 名义额（买单）或 quantity（卖单）执行；
+     * 由行情触发任务激活后直接用该冻结额度撮合。冻结失败 → REJECTED（保留记录）。</p>
+     */
+    private PlaceOrderResult placeConditional(Order order) {
+        Boolean frozen = transactionTemplate.execute(status -> {
+            orderMapper.insert(order);
+            if (!doFreeze(order)) {
+                order.setStatus(OrderConstant.STATUS_REJECTED);
+                order.setRemark("资金冻结失败");
+                orderMapper.updateById(order);
+                return false;
+            }
+            return true;
+        });
+        if (Boolean.FALSE.equals(frozen)) {
+            log.info("[order] 条件单{}下单被拒(冻结失败),状态 REJECTED", order.getOrderNo());
+            return new PlaceOrderResult(toVO(order), List.of());
+        }
+        log.info("[order] 条件单{}下单成功 status=NEW triggerStatus=0(待触发) type={} triggerPrice={} 冻结={}/{}",
+                order.getOrderNo(), order.getTriggerType(), order.getTriggerPrice(),
+                order.getFreezeQuoteAmount(), order.getFreezeBaseAmount());
+        return new PlaceOrderResult(toVO(order), List.of());
+    }
+
+    /**
+     * 激活条件单（docs/advanced-orders.md §三）：trigger_status 0→1，复用撮合/结算链路但不重复冻结。
+     * <p>激活失败（资金/风控/异常）→ trigger_status=2(取消) + remark；OCO 组内其余单自动取消并解冻。</p>
+     *
+     * @param order 待触发条件单（已按 trigger_status=0 查询）
+     * @return 激活后的订单视图
+     */
+    public OrderVO activateConditional(Order order) {
+        Symbol sym = symbolService.requireActive(order.getSymbol());
+        PrecisionContext ctx = new PrecisionContext(
+                nz(sym.getPricePrecision()), nz(sym.getAmountPrecision()),
+                coinService.requireDecimals(sym.getQuoteCoin()));
+
+        // 乐观锁抢占激活：仅 trigger_status=0 可激活（防并发触发/重复激活），失败则跳过
+        int claimed = orderMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, order.getId())
+                .eq(Order::getTriggerStatus, OrderConstant.TRIGGER_STATUS_PENDING)
+                .eq(Order::getStatus, OrderConstant.STATUS_NEW)
+                .set(Order::getTriggerStatus, OrderConstant.TRIGGER_STATUS_TRIGGERED));
+        if (claimed == 0) {
+            log.info("[order] 条件单{}已被激活/取消，跳过重复激活", order.getOrderNo());
+            return toVO(order);
+        }
+        order.setTriggerStatus(OrderConstant.TRIGGER_STATUS_TRIGGERED);
+
+        // 激活为普通单：撮合（用已冻结额度，不重复冻结）
+        MatchingEngine.MatchResult match;
+        try {
+            match = transactionTemplate.execute(status -> {
+                MatchingEngine.MatchResult mr = matchingEngine.match(order, ctx);
+                for (Trade t : mr.trades) {
+                    tradeMapper.insert(t);
+                }
+                for (Order maker : mr.changedMakers) {
+                    orderMapper.updateById(maker);
+                }
+                orderMapper.updateById(order);
+                return mr;
+            });
+        } catch (Exception e) {
+            log.error("[order] 条件单{}激活失败(异常),置 trigger_status=2: {}", order.getOrderNo(), e.getMessage());
+            orderMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                    .eq(Order::getId, order.getId())
+                    .set(Order::getTriggerStatus, OrderConstant.TRIGGER_STATUS_CANCELLED)
+                    .set(Order::getRemark, "条件单激活失败: " + e.getMessage()));
+            return toVO(order);
+        }
+        if (match == null) {
+            log.warn("[order] 条件单{}激活事务返回空,按失败处理", order.getOrderNo());
+            return toVO(order);
+        }
+
+        // 撮合被拒（资金/风控等，status 被置 REJECTED）→ trigger_status=2 + remark
+        if (order.getStatus() == OrderConstant.STATUS_REJECTED) {
+            order.setTriggerStatus(OrderConstant.TRIGGER_STATUS_CANCELLED);
+            order.setRemark((order.getRemark() == null ? "" : order.getRemark()) + "|条件单激活后被拒");
+            orderMapper.updateById(order);
+        }
+
+        // 逐笔发 ORDER-TRADE 事务消息驱动过户（与下单结算链路一致）
+        for (Trade t : match.trades) {
+            boolean dispatched = false;
+            try {
+                org.apache.rocketmq.client.producer.TransactionSendResult r = tradeProducer.sendTradeSettle(t);
+                dispatched = r != null
+                        && r.getLocalTransactionState() == org.apache.rocketmq.client.producer.LocalTransactionState.COMMIT_MESSAGE;
+                if (!dispatched) {
+                    log.warn("[order] 条件单{}激活成交{}事务消息未提交, 置 settle_status=2 待补偿", order.getOrderNo(), t.getTradeNo());
+                }
+            } catch (Exception e) {
+                log.error("[order] 条件单{}激活成交{}发送事务消息异常, 置 settle_status=2 待补偿: {}",
+                        order.getOrderNo(), t.getTradeNo(), e.getMessage(), e);
+            }
+            if (!dispatched) {
+                t.setSettleStatus(2);
+                tradeMapper.updateById(t);
+            }
+        }
+
+        // OCO：激活某单后，同组其余待触发单自动取消并解冻（docs/advanced-orders.md §四）
+        cancelOcoSiblings(order);
+
+        log.info("[order] 条件单{}激活完成 status={} remaining={} 成交{}笔",
+                order.getOrderNo(), order.getStatus(), order.getRemaining(), match.trades.size());
+        return toVO(order);
+    }
+
+    /**
+     * OCO 关联取消：把同 oco_group 下其它 trigger_status=0 的条件单取消(trigger_status=2)并解冻剩余冻结。
+     */
+    private void cancelOcoSiblings(Order activated) {
+        String group = activated.getOcoGroup();
+        if (group == null || group.isBlank()) {
+            return;
+        }
+        List<Order> siblings = orderMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                .eq(Order::getOcoGroup, group)
+                .eq(Order::getTriggerStatus, OrderConstant.TRIGGER_STATUS_PENDING)
+                .ne(Order::getId, activated.getId()));
+        for (Order s : siblings) {
+            // 乐观锁：仅待触发单可被 OCO 取消
+            int updated = orderMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                    .eq(Order::getId, s.getId())
+                    .eq(Order::getTriggerStatus, OrderConstant.TRIGGER_STATUS_PENDING)
+                    .set(Order::getTriggerStatus, OrderConstant.TRIGGER_STATUS_CANCELLED)
+                    .set(Order::getStatus, OrderConstant.STATUS_CANCELLED)
+                    .set(Order::getCancelTime, java.time.LocalDateTime.now())
+                    .set(Order::getRemark, "OCO 同组单已触发,本单取消"));
+            if (updated > 0) {
+                unfreezeConditional(s);
+                log.info("[order] OCO 同组单{}已取消并解冻, 组={}", s.getOrderNo(), group);
+            }
+        }
+    }
+
+    /** 解冻条件单剩余冻结（OCO 取消/撤单复用）。 */
+    private void unfreezeConditional(Order order) {
+        com.web3.exchange.common.asset.dto.UnfreezeRequest unfreeze = new com.web3.exchange.common.asset.dto.UnfreezeRequest();
+        unfreeze.setRequestId(order.getOrderNo() + ":C");
+        unfreeze.setUserId(order.getUserId());
+        unfreeze.setBizType(OrderConstant.BIZ_UNFREEZE);
+        unfreeze.setRefNo(order.getOrderNo());
+        long amount;
+        if (order.getSide() == OrderConstant.SIDE_BUY) {
+            unfreeze.setSymbol(order.getQuoteCoin());
+            amount = order.getFreezeQuoteAmount() - order.getFilledQuoteAmount();
+        } else {
+            unfreeze.setSymbol(order.getBaseCoin());
+            amount = order.getFreezeBaseAmount() - order.getFilledAmount();
+        }
+        unfreeze.setAmount(Math.max(0L, amount));
+        if (unfreeze.getAmount() > 0) {
+            try {
+                Result<?> r = assetClient.unfreeze(unfreeze);
+                if (r == null || !r.isSuccess()) {
+                    log.warn("[order] OCO取消解冻未成功 orderNo={} code={} msg={}",
+                            order.getOrderNo(), r == null ? "null" : r.getCode(), r == null ? "null" : r.getMessage());
+                }
+            } catch (Exception e) {
+                log.error("[order] OCO取消解冻异常 orderNo={}: {}", order.getOrderNo(), e.getMessage());
+            }
+        }
+    }
+
+    /**
      * 查询订单（对外视图）。
      */
     public OrderVO getOrder(Long userId, String orderNo) {
@@ -184,6 +359,18 @@ public class OrderService {
         return list.stream().map(this::toTradeVO).toList();
     }
 
+    /**
+     * 查询用户的条件单（docs/advanced-orders.md §五）：可筛选触发状态（null=全部 0=待触发 1=已触发 2=已取消）。
+     */
+    public List<OrderVO> listTriggeredOrders(Long userId, Integer triggerStatus) {
+        List<Order> list = orderMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .gt(Order::getTriggerType, OrderConstant.TRIGGER_TYPE_NONE)
+                .eq(triggerStatus != null, Order::getTriggerStatus, triggerStatus)
+                .orderByDesc(Order::getId));
+        return list.stream().map(this::toVO).toList();
+    }
+
     // ---------- 下单校验 ----------
 
     private void validate(PlaceOrderRequest req, Symbol sym, PrecisionContext ctx) {
@@ -203,6 +390,20 @@ public class OrderService {
             throw new ServiceException("PostOnly 仅支持限价单");
         }
         long priceTick = sym.getPriceTick() == null ? 1L : sym.getPriceTick();
+        // 条件单校验：triggerType>0 时 triggerPrice 必填且为有效类型（1=止盈 2=止损）
+        int triggerType = req.getTriggerType() == null ? OrderConstant.TRIGGER_TYPE_NONE : req.getTriggerType();
+        if (triggerType > 0) {
+            if (triggerType != OrderConstant.TRIGGER_TYPE_TAKE_PROFIT
+                    && triggerType != OrderConstant.TRIGGER_TYPE_STOP_LOSS) {
+                throw new ServiceException("无效条件单类型 triggerType");
+            }
+            if (req.getTriggerPrice() == null || req.getTriggerPrice() <= 0) {
+                throw new ServiceException("条件单必须提供触发价 triggerPrice>0");
+            }
+            if (req.getPrice() != null && req.getPrice() > 0 && req.getPrice() % priceTick != 0) {
+                throw new ServiceException("限价条件单触发后限价须为 price_tick(" + priceTick + ") 的整数倍");
+            }
+        }
         if (req.getOrderType() == OrderConstant.TYPE_LIMIT) {
             if (req.getPrice() == null || req.getPrice() <= 0) {
                 throw new ServiceException("限价单价格必须>0");
@@ -276,7 +477,11 @@ public class OrderService {
             o.setRemaining(req.getQuantity());
             if (req.getSide() == OrderConstant.SIDE_BUY) {
                 // 限价买单冻结额 = 精确换算的 price×quantity（计价币最小单位，溢出安全）
-                o.setFreezeQuoteAmount(ctx.quoteAmount(req.getPrice(), req.getQuantity()));
+                // 条件单按 triggerPrice 名义额冻结（下单即冻结），激活后直接使用该冻结额度撮合
+                long freezePrice = o.getTriggerType() != null && o.getTriggerType() > 0
+                        ? (o.getTriggerPrice() == null ? 0L : o.getTriggerPrice())
+                        : req.getPrice();
+                o.setFreezeQuoteAmount(ctx.quoteAmount(freezePrice, req.getQuantity()));
                 o.setFreezeBaseAmount(0L);
             } else {
                 o.setFreezeQuoteAmount(0L);

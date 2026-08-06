@@ -82,6 +82,11 @@ springdoc:
     enabled: true
     path: /swagger-ui.html
 
+# 条件单行情触发任务（批次B）
+order:
+  trigger:
+    market-ticker-url: http://127.0.0.1:8106/api/market/ticker/list
+
 logging:
   level:
     com.web3.exchange.order: debug

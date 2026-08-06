@@ -69,6 +69,12 @@ public class CancelService {
                 .in(Order::getStatus, OrderConstant.STATUS_NEW, OrderConstant.STATUS_PARTIAL)
                 .set(Order::getStatus, OrderConstant.STATUS_CANCELLED)
                 .set(Order::getCancelTime, LocalDateTime.now());
+        // 条件单（未触发，trigger_type>0 且 trigger_status=0）撤单 → 同步置 trigger_status=2(已取消)
+        boolean isPendingConditional = order.getTriggerType() != null && order.getTriggerType() > 0
+                && order.getTriggerStatus() != null && order.getTriggerStatus() == OrderConstant.TRIGGER_STATUS_PENDING;
+        if (isPendingConditional) {
+            uw.set(Order::getTriggerStatus, OrderConstant.TRIGGER_STATUS_CANCELLED);
+        }
         boolean updated = orderMapper.update(null, uw) > 0;
         if (!updated) {
             // 并发下状态已变化（可能刚成交/已撤），回滚本次撤单
@@ -76,6 +82,9 @@ public class CancelService {
         }
         order.setStatus(OrderConstant.STATUS_CANCELLED);
         order.setCancelTime(LocalDateTime.now());
+        if (isPendingConditional) {
+            order.setTriggerStatus(OrderConstant.TRIGGER_STATUS_CANCELLED);
+        }
 
         // 3) 解冻剩余冻结（成交部分已过户，无需再解冻）
         UnfreezeRequest unfreeze = new UnfreezeRequest();
