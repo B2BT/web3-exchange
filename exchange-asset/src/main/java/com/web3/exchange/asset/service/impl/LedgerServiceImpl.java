@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.web3.exchange.asset.entity.Account;
 import com.web3.exchange.asset.entity.Ledger;
 import com.web3.exchange.asset.mapper.LedgerMapper;
+import com.web3.exchange.asset.mq.producer.AssetEventProducer;
 import com.web3.exchange.asset.service.AccountService;
 import com.web3.exchange.asset.service.BizType;
 import com.web3.exchange.asset.service.Direction;
@@ -39,8 +40,11 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
 
     private final AccountService accountService;
 
-    public LedgerServiceImpl(AccountService accountService) {
+    private final AssetEventProducer assetEventProducer;
+
+    public LedgerServiceImpl(AccountService accountService, AssetEventProducer assetEventProducer) {
         this.accountService = accountService;
+        this.assetEventProducer = assetEventProducer;
     }
 
     // ==================== 冻结 ====================
@@ -248,6 +252,13 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
             // 乐观锁冲突 → 抛异常整体回滚（含上面已写的流水）
             throw new BusinessException(409, "余额更新冲突，请重试");
         }
+
+        // ===== 资金变动成功：发送 ASSET-CHANGE 事件（骨架，批次B）=====
+        // 仅作事件通知补充，不参与资金主流程；发送失败由 producer 内部降级为仅记录日志，
+        // 绝不抛异常回滚资金事务。注意：本方法处于事务内，发送发生在提交前；
+        // 如需严格「提交后才可被消费」，后续可升级为 RocketMQ 事务消息（见 docs/mq-topics.md）。
+        assetEventProducer.publishAssetChange(toVO(ledger));
+
         return toVO(ledger);
     }
 

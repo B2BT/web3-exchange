@@ -78,6 +78,14 @@ springdoc:
     enabled: true
     path: /swagger-ui.html
 
+# =============== RocketMQ（消息中间件骨架，批次B） ===============
+# nameserver 指向 dev-rmq-namesrv:9876；broker 由 PM 拉起后再做运行时验证，本次仅代码+编译。
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: asset-producer-group
+    send-message-timeout: 3000   # 发消息超时(ms)；发送失败降级为仅记录日志，不阻断资金主流程
+
 logging:
   level:
     com.web3.exchange.asset: debug

@@ -37,6 +37,10 @@
         <lombok.version>1.18.30</lombok.version>
         <!-- Web3 -->
         <web3j.version>4.10.3</web3j.version>
+        <!-- 消息中间件（RocketMQ，兼容 Spring Boot 3.2.x / Java 17） -->
+        <rocketmq.spring.version>2.3.1</rocketmq.spring.version>
+        <!-- rocketmq-spring-boot 2.3.1 需要 setNamespaceV2(5.2.0+)；覆盖客户端到 5.3.0 与 broker 一致 -->
+        <rocketmq.client.version>5.3.0</rocketmq.client.version>
         <!-- 编码 -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
@@ -138,6 +142,20 @@
                 <artifactId>jjwt-impl</artifactId>
                 <version>${jjwt.version}</version>
                 <scope>runtime</scope>
+            </dependency>
+
+            <!-- RocketMQ（消息中间件） -->
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-spring-boot-starter</artifactId>
+                <version>${rocketmq.spring.version}</version>
+            </dependency>
+
+            <!-- 覆盖传递依赖：rocketmq-client 需 ≥5.2.0(含 setNamespaceV2)；5.3.0 与 broker 对齐 -->
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-client</artifactId>
+                <version>${rocketmq.client.version}</version>
             </dependency>
 
             <!-- JSON 序列化（Jackson，和 Spring Boot 完美适配） -->

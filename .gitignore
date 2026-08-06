@@ -13,6 +13,7 @@ target/
 dev-env/mysql/data/
 dev-env/redis/data/
 dev-env/nacos/
+dev-env/rocketmq/store/
 
 # ===== 日志 =====
 logs/
