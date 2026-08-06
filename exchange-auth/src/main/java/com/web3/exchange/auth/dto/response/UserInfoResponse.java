@@ -2,6 +2,8 @@ package com.web3.exchange.auth.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.web3.exchange.common.user.UserDetailDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -24,6 +26,7 @@ public class UserInfoResponse implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Schema(description = "用户ID", example = "1")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     @Schema(description = "用户名", example = "admin")

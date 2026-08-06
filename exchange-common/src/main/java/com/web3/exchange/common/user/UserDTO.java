@@ -1,5 +1,7 @@
 package com.web3.exchange.common.user;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,6 +25,8 @@ public class UserDTO implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /** 用户ID（雪花 Long，序列化为 String 避免 JS 精度丢失） */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     private String username;
     private String nickname;

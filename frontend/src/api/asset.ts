@@ -3,7 +3,7 @@ import { request } from './http'
 /** 钱包账户视图（金额 = 币种最小单位 Long） */
 export interface AccountItem {
   accountId?: number
-  userId?: number
+  userId?: string | number
   coinId?: number
   symbol?: string
   /** 可用余额（最小单位） */
@@ -19,11 +19,11 @@ export interface AccountItem {
 }
 
 /** 查询用户资产总览：返回该用户全部币种账户 */
-export function accounts(userId: number): Promise<AccountItem[]> {
+export function accounts(userId: string | number): Promise<AccountItem[]> {
   return request<AccountItem[]>({ url: '/asset/accounts', method: 'get', params: { userId } })
 }
 
 /** 查询单币种余额 */
-export function balance(userId: number, symbol: string): Promise<AccountItem> {
+export function balance(userId: string | number, symbol: string): Promise<AccountItem> {
   return request<AccountItem>({ url: '/asset/balance', method: 'get', params: { userId, symbol } })
 }

@@ -12,7 +12,7 @@ export interface PageResult<T> {
 /** 充币地址视图 */
 export interface AssetAddress {
   id?: number
-  userId?: number
+  userId?: string | number
   chainCode?: string
   symbol?: string
   address?: string
@@ -24,7 +24,7 @@ export interface AssetAddress {
 /** 充值记录视图（金额 = 最小单位 Long） */
 export interface DepositItem {
   id?: number
-  userId?: number
+  userId?: string | number
   symbol?: string
   chainCode?: string
   fromAddress?: string
@@ -46,7 +46,7 @@ export interface DepositItem {
 export interface WithdrawItem {
   id?: number
   requestId?: string
-  userId?: number
+  userId?: string | number
   symbol?: string
   chainCode?: string
   toAddress?: string
@@ -66,7 +66,7 @@ export interface WithdrawItem {
 
 /** 提现申请请求（金额 = 币种最小单位 Long） */
 export interface WithdrawApplyRequest {
-  userId: number
+  userId: string | number
   symbol: string
   chainCode: string
   toAddress: string
@@ -75,7 +75,7 @@ export interface WithdrawApplyRequest {
 
 /** 查询用户充币地址 */
 export function depositAddress(
-  userId: number,
+  userId: string | number,
   chainCode: string,
   symbol: string,
 ): Promise<AssetAddress> {
@@ -87,7 +87,7 @@ export function depositAddress(
 }
 
 /** 充值记录分页 */
-export function depositList(userId: number, page = 1, size = 20): Promise<PageResult<DepositItem>> {
+export function depositList(userId: string | number, page = 1, size = 20): Promise<PageResult<DepositItem>> {
   return request<PageResult<DepositItem>>({
     url: '/chain/deposit/list',
     method: 'get',
@@ -101,7 +101,7 @@ export function withdrawApply(data: WithdrawApplyRequest): Promise<WithdrawItem>
 }
 
 /** 提现记录分页 */
-export function withdrawList(userId: number, page = 1, size = 20): Promise<PageResult<WithdrawItem>> {
+export function withdrawList(userId: string | number, page = 1, size = 20): Promise<PageResult<WithdrawItem>> {
   return request<PageResult<WithdrawItem>>({
     url: '/chain/withdraw/list',
     method: 'get',

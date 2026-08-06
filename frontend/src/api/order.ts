@@ -2,7 +2,7 @@ import { request } from './http'
 
 /** 下单请求（金额一律 Long 最小单位） */
 export interface PlaceOrderRequest {
-  userId: number
+  userId: string | number
   symbol: string
   /** 方向：1=BUY 2=SELL */
   side: number
@@ -23,7 +23,7 @@ export interface OrderItem {
   id?: number
   orderNo?: string
   clientOid?: string
-  userId?: number
+  userId?: string | number
   symbol?: string
   baseCoin?: string
   quoteCoin?: string
@@ -66,11 +66,11 @@ export function placeOrder(data: PlaceOrderRequest): Promise<PlaceOrderResult> {
 }
 
 /** 查询订单 */
-export function getOrder(userId: number, orderNo: string): Promise<OrderItem> {
+export function getOrder(userId: string | number, orderNo: string): Promise<OrderItem> {
   return request<OrderItem>({ url: '/order/get', method: 'get', params: { userId, orderNo } })
 }
 
 /** 查询订单成交明细 */
-export function getTrades(userId: number, orderNo: string): Promise<TradeItem[]> {
+export function getTrades(userId: string | number, orderNo: string): Promise<TradeItem[]> {
   return request<TradeItem[]>({ url: '/order/trades', method: 'get', params: { userId, orderNo } })
 }

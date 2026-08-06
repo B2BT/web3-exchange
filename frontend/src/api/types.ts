@@ -22,7 +22,8 @@ export interface CaptchaData {
 
 /** 用户信息（登录响应内嵌） */
 export interface UserInfo {
-  id: number
+  /** 用户ID（雪花 id 以字符串返回，避免 JS 精度丢失） */
+  id: string
   username: string
   realName?: string
   nickname?: string

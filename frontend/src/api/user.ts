@@ -32,11 +32,11 @@ export function getUserInfo(username: string): Promise<UserProfile> {
 }
 
 /** 查询 KYC 认证状态 */
-export function getKycStatus(id: number): Promise<KycStatus> {
+export function getKycStatus(id: string | number): Promise<KycStatus> {
   return request<KycStatus>({ url: `/users/${id}/kyc/status`, method: 'get' })
 }
 
 /** 查询用户等级（NORMAL/VIP/SVIP） */
-export function getUserLevel(id: number): Promise<string> {
+export function getUserLevel(id: string | number): Promise<string> {
   return request<string>({ url: `/users/${id}/level`, method: 'get' })
 }
