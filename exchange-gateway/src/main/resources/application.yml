@@ -58,6 +58,16 @@ spring:
           uri: lb://exchange-notify
           predicates:
             - Path=/api/notify/**
+        # asset 服务：无 context-path，Controller 映射 /api/asset/**
+        - id: asset-service
+          uri: lb://exchange-asset
+          predicates:
+            - Path=/api/asset/**
+        # monitor 服务：无 context-path，Controller 映射 /api/monitor/**
+        - id: monitor-service
+          uri: lb://exchange-monitor
+          predicates:
+            - Path=/api/monitor/**
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market
