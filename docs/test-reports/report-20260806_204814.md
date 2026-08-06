@@ -1,0 +1,24 @@
+# 测试报告 - 2026-08-06 20:48:14
+
+## 汇总: 通过 18 / 失败 0 / 共 18
+
+| 状态 | 域 | 用例 | 详情 |
+|------|----|------|------|
+| ✅ | auth | 验证码 | OK |
+| ✅ | auth | 登录返回token | OK |
+| ✅ | market | ticker列表 | OK |
+| ✅ | market | ticker含BTC/USDT | OK |
+| ✅ | market | K线1m | OK |
+| ✅ | market | K线5m多周期 | OK |
+| ✅ | order | 深度盘口bids+asks | OK |
+| ✅ | order | 最近成交 | OK |
+| ✅ | order | 订单分页list | OK |
+| ✅ | order | 挂单过滤status=0 | OK |
+| ✅ | order | 条件单triggered | OK |
+| ✅ | asset | 账户余额 | OK |
+| ✅ | asset | 资金明细分页 | OK |
+| ✅ | order | 限价GTC下单 | OK |
+| ✅ | order | 撤单 | OK |
+| ✅ | notify | 通知列表 | OK |
+| ✅ | chain | 充值地址 | OK |
+| ✅ | monitor | 网关+行情可达 | OK |
