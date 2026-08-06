@@ -1,0 +1,34 @@
+server:
+  port: 8106
+spring:
+  application:
+    name: exchange-market
+
+  mvc:
+    pathmatch:
+      # PathPatternParser 不支持路径变量正则；用 AntPathMatcher 使 /ticker/{symbol:.+} 可捕获含斜杠交易对(如 BTC/USDT)
+      matching-strategy: ant_path_matcher
+
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      discovery:
+        namespace: public
+        group: DEFAULT_GROUP
+
+# 最简SpringDoc配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+# =============== RocketMQ（仅消费 ORDER-TRADE，无需 producer group） ===============
+rocketmq:
+  name-server: 127.0.0.1:9876
+
+logging:
+  level:
+    com.web3.exchange.market: debug

@@ -184,6 +184,7 @@
         <module>exchange-order</module>
         <module>exchange-chain</module>
         <module>exchange-notify</module>
+        <module>exchange-market</module>
         <module>exchange-monitor</module>
         <module>exchange-user</module>
     </modules>

@@ -8,9 +8,9 @@
         <version>1.0.0</version>
     </parent>
 
-    <!-- 通知模块 -->
-    <artifactId>exchange-notify</artifactId>
-    <description>通知模块，负责站内通知（inbox）：消费资金/交易事件生成通知、查询与已读。</description>
+    <!-- 行情模块 -->
+    <artifactId>exchange-market</artifactId>
+    <description>行情模块：消费 ORDER-TRADE 成交事件，内存聚合 K线(OHLCV 1m-1d)/ticker，对外 REST 查询。</description>
 
     <dependencies>
         <!-- Spring Boot基础依赖 -->
@@ -31,25 +31,6 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- 使用MyBatis-Plus -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
-        </dependency>
-
-        <!-- MySQL驱动 -->
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- Druid连接池 -->
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-starter</artifactId>
-        </dependency>
-
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -68,20 +49,18 @@
             <groupId>com.web3.exchange</groupId>
             <artifactId>exchange-common</artifactId>
             <version>1.0.0</version>
-            <!-- 排除 common 内置的旧版 mybatis-plus-extension(3.5.5)，避免与 starter 的 jsqlparser 4.9 冲突 -->
+            <!-- 排除 common 内置的 mybatis-plus-extension(3.5.5) 与 starter——行情纯内存无 DB，
+                 避免 MybatisPlus 自动配置在无数据源时因类缺失报错 -->
             <exclusions>
                 <exclusion>
                     <groupId>com.baomidou</groupId>
                     <artifactId>mybatis-plus-extension</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.baomidou</groupId>
+                    <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                </exclusion>
             </exclusions>
-        </dependency>
-
-        <!-- 显式引入与 jsqlparser 4.9 匹配的 mybatis-plus-extension(3.5.7) -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-extension</artifactId>
-            <version>${mybatis-plus.version}</version>
         </dependency>
 
         <!-- =============== 消息中间件（RocketMQ 消费者） =============== -->
