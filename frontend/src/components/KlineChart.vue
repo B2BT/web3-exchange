@@ -13,10 +13,13 @@ const props = defineProps<{
   /** 基础币精度（成交量用） */
   baseDecimals: number
   priceDecimals?: number
+  /** ws 实时推送的最新一根 K线（父组件喂入，替换或追加到末尾） */
+  liveKline?: KlineItem | null
 }>()
 
 const containerRef = ref<HTMLDivElement>()
 const chart = shallowRef<echarts.ECharts | null>(null)
+const rows = ref<KlineItem[]>([])
 const loading = ref(false)
 const empty = ref(false)
 const errorMsg = ref('')
@@ -241,9 +244,11 @@ async function load() {
   loading.value = true
   empty.value = false
   errorMsg.value = ''
+  rows.value = []
   try {
-    const rows = await kline(props.symbol, props.period)
-    render(rows)
+    const fetched = await kline(props.symbol, props.period)
+    rows.value = fetched
+    render(rows.value)
   } catch (e: any) {
     errorMsg.value = e?.message || 'K线加载失败'
     chart.value?.clear()
@@ -252,8 +257,31 @@ async function load() {
   }
 }
 
+/** 把 ws 实时推送的最新一根 K线并入已加载列表（同 openTime 替换，新开一根则追加） */
+function mergeLiveKline(k?: KlineItem | null) {
+  if (!k) return
+  if (k.symbol && k.symbol !== props.symbol) return
+  if (k.interval && k.interval !== props.period) return
+  const arr = rows.value
+  if (!arr.length) {
+    rows.value = [k]
+    render(rows.value)
+    return
+  }
+  const last = arr[arr.length - 1]
+  const sameOpenTime = last.openTime != null && k.openTime != null && last.openTime === k.openTime
+  if (sameOpenTime) {
+    arr[arr.length - 1] = k
+  } else if (k.openTime != null && last.openTime != null && k.openTime > last.openTime) {
+    arr.push(k)
+    if (arr.length > 500) arr.splice(0, arr.length - 500)
+  }
+  render(rows.value)
+}
+
 onMounted(load)
 watch(() => [props.symbol, props.period], load)
+watch(() => props.liveKline, mergeLiveKline)
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   chart.value?.dispose()

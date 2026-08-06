@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import KlineChart from '@/components/KlineChart.vue'
 import { tickerList } from '@/api/market'
-import type { TickerItem } from '@/api/market'
+import type { KlineItem, TickerItem } from '@/api/market'
+import { marketWs } from '@/api/marketWs'
 import { DEFAULT_SYMBOLS, PERIODS, coinDecimals, symbolParts } from '@/config/market'
 import { formatBpPercent, formatLong } from '@/utils/format'
 
@@ -14,6 +15,10 @@ const period = ref('1m')
 const tickers = ref<TickerItem[]>([])
 const tickerLoading = ref(false)
 const errorMsg = ref('')
+/** ws 实时推送的最新一根 K线（喂给 KlineChart 实时刷新） */
+const liveKline = ref<KlineItem | null>(null)
+/** ws 连接状态（false 时走 REST 兜底） */
+const wsReady = ref(false)
 
 const parts = computed(() => symbolParts(currentSymbol.value))
 const quoteDecimals = computed(() => coinDecimals(parts.value.quote))
@@ -54,7 +59,69 @@ const changeClass = computed(() => {
   return Number(bp) >= 0 ? 'up' : 'down'
 })
 
-onMounted(loadTickers)
+/* ================= WebSocket 实时行情 ================= */
+function subscribeWs() {
+  marketWs.subscribe('ticker', currentSymbol.value)
+  marketWs.subscribe('kline', currentSymbol.value, period.value)
+  liveKline.value = null
+}
+
+function unsubscribeWs() {
+  marketWs.unsubscribe('ticker', currentSymbol.value)
+  marketWs.unsubscribe('kline', currentSymbol.value, period.value)
+}
+
+/** ticker 推送 → 合并进列表（更新或新增） */
+function applyTicker(data: TickerItem) {
+  const sym = data.symbol || currentSymbol.value
+  const idx = tickers.value.findIndex((t) => t.symbol === sym)
+  if (idx >= 0) {
+    tickers.value[idx] = { ...tickers.value[idx], ...data }
+  } else {
+    tickers.value.push({ ...data, symbol: sym })
+  }
+  // 触发响应式，驱动 currentTicker 刷新
+  tickers.value = [...tickers.value]
+}
+
+onMounted(() => {
+  loadTickers()
+  marketWs
+    .on({
+      onTicker: (symbol, data) => {
+        if (symbol !== currentSymbol.value) return
+        applyTicker(data)
+      },
+      onKline: (symbol, p, data) => {
+        if (symbol !== currentSymbol.value || p !== period.value) return
+        liveKline.value = data
+      },
+      onStatus: (connected) => {
+        wsReady.value = connected
+      },
+    })
+    .connect()
+  subscribeWs()
+})
+
+watch(currentSymbol, (n, o) => {
+  if (o) {
+    marketWs.unsubscribe('ticker', o)
+    marketWs.unsubscribe('kline', o, period.value)
+  }
+  subscribeWs()
+})
+
+watch(period, (n, o) => {
+  marketWs.unsubscribe('kline', currentSymbol.value, o)
+  marketWs.subscribe('kline', currentSymbol.value, n)
+  liveKline.value = null
+})
+
+onBeforeUnmount(() => {
+  unsubscribeWs()
+  marketWs.close()
+})
 </script>
 
 <template>
@@ -91,6 +158,19 @@ onMounted(loadTickers)
         >
           刷新
         </el-button>
+
+        <el-tag
+          v-if="wsReady"
+          type="success"
+          size="small"
+          effect="plain"
+          class="ws-tag"
+        >
+          WS 实时
+        </el-tag>
+        <el-tag v-else type="info" size="small" effect="plain" class="ws-tag">
+          REST 兜底
+        </el-tag>
       </div>
 
       <el-alert
@@ -154,6 +234,7 @@ onMounted(loadTickers)
         :period="period"
         :quote-decimals="quoteDecimals"
         :base-decimals="baseDecimals"
+        :live-kline="liveKline"
       />
     </el-card>
   </div>
@@ -173,6 +254,9 @@ onMounted(loadTickers)
 }
 .period-group {
   margin-left: 8px;
+}
+.ws-tag {
+  margin-left: 10px;
 }
 .tick-label {
   font-size: 12px;

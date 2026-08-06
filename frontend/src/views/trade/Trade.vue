@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { placeOrder } from '@/api/order'
 import type { PlaceOrderResult } from '@/api/order'
 import { accounts } from '@/api/asset'
 import { tickerList } from '@/api/market'
+import { marketWs } from '@/api/marketWs'
 import { useAuthStore } from '@/stores/auth'
 import { DEFAULT_SYMBOLS, PRICE_DECIMALS, coinDecimals, symbolParts } from '@/config/market'
 import { formatLong, toLong } from '@/utils/format'
@@ -240,16 +241,34 @@ async function submit() {
 
 watch(
   () => currentSymbol.value,
-  () => {
+  (n, o) => {
     resetFields()
     loadBalance()
     loadTicker()
+    // ws：切交易对 → 重新订阅当前 ticker
+    if (o) marketWs.unsubscribe('ticker', o)
+    marketWs.subscribe('ticker', n)
   },
 )
 
 onMounted(() => {
   loadBalance()
   loadTicker()
+  // ws 实时最新价
+  marketWs
+    .on({
+      onTicker: (symbol, data) => {
+        if (symbol !== currentSymbol.value) return
+        if (data.lastPrice != null) lastPriceLong.value = data.lastPrice
+      },
+    })
+    .connect()
+  marketWs.subscribe('ticker', currentSymbol.value)
+})
+
+onBeforeUnmount(() => {
+  marketWs.unsubscribe('ticker', currentSymbol.value)
+  marketWs.close()
 })
 </script>
 

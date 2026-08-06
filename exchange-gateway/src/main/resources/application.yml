@@ -53,6 +53,12 @@ spring:
           uri: lb://exchange-market
           predicates:
             - Path=/api/market/**
+        # market WebSocket 实时行情：ws 升级原生转发（market 服务注册端点 /api/market/ws 与 /ws）
+        # 置于 market-service 之前，确保 /api/market/ws 走专路由（Spring Cloud Gateway 原生支持 WebSocket）
+        - id: market-websocket
+          uri: lb://exchange-market
+          predicates:
+            - Path=/api/market/ws
         # notify 服务：无 context-path，Controller 映射 /api/notify/**
         - id: notify-service
           uri: lb://exchange-notify

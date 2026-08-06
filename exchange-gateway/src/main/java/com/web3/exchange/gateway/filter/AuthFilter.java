@@ -48,7 +48,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/auth/register",
             "/api/auth/captcha",
             "/api/auth/reset-password",
-            "/actuator/health"
+            "/actuator/health",
+            // WebSocket 实时行情：公开订阅，ws 升级握手无 token 需放行
+            "/api/market/ws"
     );
 
     @Value("${jwt.secret}")
