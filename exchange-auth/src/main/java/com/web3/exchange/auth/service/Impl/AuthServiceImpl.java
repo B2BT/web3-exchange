@@ -103,7 +103,8 @@ public class AuthServiceImpl implements AuthService {
             UserInfoResponse userInfo = UserInfoResponse.simple(
                     userPrincipal.getUserId(),
                     userPrincipal.getUsername(),
-                    userPrincipal.getUsername()
+                    userPrincipal.getUsername(),
+                    userPrincipal.getRole()
             );
 
             return LoginResponse.builder()

@@ -47,6 +47,11 @@ public class UserPrincipal implements UserDetails {
     private Integer status;
 
     /**
+     * 角色：USER 普通 / ADMIN 管理员（来自 t_user.role，管理平台鉴权用）
+     */
+    private String role;
+
+    /**
      * 邮箱
      */
     private String email;
@@ -184,6 +189,7 @@ public class UserPrincipal implements UserDetails {
                 .username(user.getUsername())
                 .password(user.getEncryptedPassword())
                 .status(user.getStatus())
+                .role(user.getRole())
                 .twoFactorEnabled(user.getTwoFactorEnabled())
                 .secretKey(user.getSecretKey())
                 .permissions(permissions != null ? new HashSet<>(permissions) : new HashSet<>())

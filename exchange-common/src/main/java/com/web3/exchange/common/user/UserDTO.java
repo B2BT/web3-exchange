@@ -36,6 +36,8 @@ public class UserDTO implements Serializable {
     private Integer status;
     private Long deptId;
     private Long tenantId;
+    /** 角色：USER 普通 / ADMIN 管理员（来自 t_user.role，管理平台鉴权用） */
+    private String role;
     private List<String> roles;
     private List<String> permissions;
     private LocalDateTime createTime;

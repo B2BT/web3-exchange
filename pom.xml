@@ -187,6 +187,7 @@
         <module>exchange-market</module>
         <module>exchange-monitor</module>
         <module>exchange-user</module>
+        <module>exchange-admin</module>
     </modules>
 
 </project>

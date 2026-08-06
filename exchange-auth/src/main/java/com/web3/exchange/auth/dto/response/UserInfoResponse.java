@@ -66,6 +66,9 @@ public class UserInfoResponse implements Serializable {
     @Schema(description = "状态显示文本", example = "启用")
     private String statusText;
 
+    @Schema(description = "角色:USER普通/ADMIN管理员", example = "USER")
+    private String role;
+
     @Schema(description = "部门ID", example = "100")
     private Long deptId;
 
@@ -164,6 +167,7 @@ public class UserInfoResponse implements Serializable {
                 .permissions(userDetailDTO.getPermissions())
                 .lastLoginTime(userDetailDTO.getLastLoginTime())
                 .lastLoginIp(userDetailDTO.getLastLoginIp())
+                .role(userDetailDTO.getRole())
                 .build();
 
     }
@@ -174,6 +178,16 @@ public class UserInfoResponse implements Serializable {
                 .id(id)
                 .username(username)
                 .realName(realName)
+                .build();
+    }
+
+    /** 登录响应用的简洁用户信息（含 role，供管理平台判断 ADMIN）。 */
+    public static UserInfoResponse simple(Long id, String username, String realName, String role) {
+        return UserInfoResponse.builder()
+                .id(id)
+                .username(username)
+                .realName(realName)
+                .role(role)
                 .build();
     }
 }

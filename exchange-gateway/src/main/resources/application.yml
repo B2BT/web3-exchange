@@ -74,6 +74,12 @@ spring:
           uri: lb://exchange-monitor
           predicates:
             - Path=/api/monitor/**
+        # admin 服务（管理平台）：无 context-path，Controller 映射 /api/admin/**（需 ADMIN 角色，域内校验 role）
+        # 该路由不在 AuthFilter 白名单内，须携带合法 JWT（网关注入 X-User-Id），admin 域据此查 role 拦截非管理员。
+        - id: admin-service
+          uri: lb://exchange-admin
+          predicates:
+            - Path=/api/admin/**
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market

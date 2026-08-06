@@ -38,6 +38,11 @@ public class AuthUser {
     private Integer status;
 
     /**
+     * 角色：USER 普通 / ADMIN 管理员（来自 t_user.role，管理平台鉴权用）
+     */
+    private String role;
+
+    /**
      * 权限列表
      */
     private Set<String> permissions = new HashSet<>();
@@ -75,6 +80,7 @@ public class AuthUser {
                 .userId(userDTO.getId())
                 .username(userDTO.getUsername())
                 .status(userDTO.getStatus())
+                .role(userDTO.getRole())
                 .roles(userDTO.getRoles() != null ? new HashSet<>(userDTO.getRoles()) : new HashSet<>())
                 .permissions(userDTO.getPermissions() != null ? new HashSet<>(userDTO.getPermissions()) : new HashSet<>())
                 .tenantId(userDTO.getTenantId())

@@ -1,5 +1,6 @@
 package com.web3.exchange.chain.controller;
 
+import com.web3.exchange.chain.dto.AuditRequest;
 import com.web3.exchange.chain.dto.WithdrawVO;
 import com.web3.exchange.chain.service.WithdrawService;
 import com.web3.exchange.common.model.Result;
@@ -7,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,5 +42,13 @@ public class InternalChainController {
     public Result<WithdrawVO> confirm(@RequestParam("withdrawId") Long withdrawId) {
         withdrawService.confirm(withdrawId);
         return Result.success(withdrawService.getWithdraw(withdrawId));
+    }
+
+    /** 提现审核（管理平台 exchange-admin 调用）：approve=true 冻结上链 / false 拒绝。 */
+    @Operation(summary = "提现审核")
+    @PostMapping("/withdraw/audit")
+    public Result<WithdrawVO> audit(@RequestParam("withdrawId") Long withdrawId,
+                                    @RequestBody AuditRequest req) {
+        return Result.success(withdrawService.audit(withdrawId, req));
     }
 }

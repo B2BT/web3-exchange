@@ -351,6 +351,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .phone(user.getPhone())
                 .avatar(user.getAvatar())
                 .status(user.getStatus())
+                .role(user.getRole())
                 .deptId(user.getTenantId())
                 .tenantId(user.getTenantId())
 //                .roles()

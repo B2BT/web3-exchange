@@ -18,6 +18,8 @@ public class User extends BaseEntity {
     private String realName;
     private String avatar;
     private Integer status;
+    /** 角色：USER 普通 / ADMIN 管理员（管理平台鉴权用） */
+    private String role;
     private Integer accountNonExpired;
     private Integer accountNonLocked;
     private Integer credentialsNonExpired;
