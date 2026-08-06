@@ -1,5 +1,6 @@
 package com.web3.exchange.order.controller;
 
+import com.web3.exchange.common.model.PageData;
 import com.web3.exchange.common.model.Result;
 import com.web3.exchange.order.dto.CancelOrderRequest;
 import com.web3.exchange.order.dto.DepthVO;
@@ -95,6 +96,18 @@ public class OrderController {
                                               @RequestParam(value = "limit", defaultValue = "50") int limit) {
         int capped = Math.max(1, Math.min(limit, 200));
         return Result.success(orderService.listRecentTrades(symbol, capped));
+    }
+
+    /**
+     * 分页查询用户订单（docs/order-list.md §一）：status 可选，按 create_time 降序；page 默认1, size 默认20, 上限100。
+     */
+    @Operation(summary = "分页查询订单")
+    @GetMapping("/list")
+    public Result<PageData<OrderVO>> list(@RequestParam("userId") Long userId,
+                                          @RequestParam(value = "status", required = false) Integer status,
+                                          @RequestParam(value = "page", defaultValue = "1") long page,
+                                          @RequestParam(value = "size", defaultValue = "20") long size) {
+        return Result.success(orderService.pageOrders(userId, status, page, size));
     }
 
     /**

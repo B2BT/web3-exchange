@@ -1,8 +1,11 @@
 package com.web3.exchange.order.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.web3.exchange.common.asset.dto.FreezeRequest;
 import com.web3.exchange.common.exception.ServiceException;
+import com.web3.exchange.common.model.PageData;
 import com.web3.exchange.common.model.Result;
 import com.web3.exchange.order.constant.OrderConstant;
 import com.web3.exchange.order.dto.DepthVO;
@@ -363,12 +366,34 @@ public class OrderService {
      * 查询用户的条件单（docs/advanced-orders.md §五）：可筛选触发状态（null=全部 0=待触发 1=已触发 2=已取消）。
      */
     public List<OrderVO> listTriggeredOrders(Long userId, Integer triggerStatus) {
-        List<Order> list = orderMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+        List<Order> list = orderMapper.selectList(new LambdaQueryWrapper<Order>()
                 .eq(Order::getUserId, userId)
                 .gt(Order::getTriggerType, OrderConstant.TRIGGER_TYPE_NONE)
                 .eq(triggerStatus != null, Order::getTriggerStatus, triggerStatus)
                 .orderByDesc(Order::getId));
         return list.stream().map(this::toVO).toList();
+    }
+
+    /**
+     * 分页查询用户订单（docs/order-list.md §一）：userId 必填、status 可选，按 create_time 降序分页。
+     * <p>size 上限 100（超出截断），page/size 最小 1；复用 MyBatis-Plus {@link Page} 分页插件自动 count，
+     * 返回 exchange-common 的 {@link PageData}<OrderVO>。</p>
+     */
+    public PageData<OrderVO> pageOrders(Long userId, Integer status, long page, long size) {
+        long safeSize = Math.min(Math.max(size, 1L), 100L);
+        long safePage = Math.max(page, 1L);
+        Page<Order> p = new Page<>(safePage, safeSize);
+        Page<Order> result = orderMapper.selectPage(p, new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .eq(status != null, Order::getStatus, status)
+                .orderByDesc(Order::getCreateTime));
+        PageData<OrderVO> data = new PageData<>();
+        data.setTotal(result.getTotal());
+        data.setCurrent(result.getCurrent());
+        data.setSize(result.getSize());
+        data.setPages(result.getPages());
+        data.setRecords(result.getRecords().stream().map(this::toVO).toList());
+        return data;
     }
 
     // ---------- 下单校验 ----------

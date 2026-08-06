@@ -49,6 +49,15 @@ export interface OrderItem {
   createTime?: string
 }
 
+/** 分页结果（复用 exchange-common 的 PageData） */
+export interface PageData<T> {
+  records?: T[]
+  total?: number
+  current?: number
+  size?: number
+  pages?: number
+}
+
 /** 成交视图 */
 export interface TradeItem {
   id?: number
@@ -112,6 +121,21 @@ export function getOrder(userId: string | number, orderNo: string): Promise<Orde
 /** 查询订单成交明细 */
 export function getTrades(userId: string | number, orderNo: string): Promise<TradeItem[]> {
   return request<TradeItem[]>({ url: '/order/trades', method: 'get', params: { userId, orderNo } })
+}
+
+/** 按用户分页查询订单（status 可选：0=待成交 1=部分成交 2=已完成 3=已取消 4=已拒绝） */
+export function listOrders(params: {
+  userId: string | number
+  status?: number
+  page?: number
+  size?: number
+}): Promise<PageData<OrderItem>> {
+  return request<PageData<OrderItem>>({ url: '/order/list', method: 'get', params })
+}
+
+/** 撤销订单 */
+export function cancelOrder(userId: string | number, orderNo: string): Promise<OrderItem> {
+  return request<OrderItem>({ url: '/order/cancel', method: 'get', params: { userId, orderNo } })
 }
 
 /** 深度盘口（公开只读行情，带 symbol + limit） */
