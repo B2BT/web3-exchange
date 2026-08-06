@@ -147,6 +147,21 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
         return voPage;
     }
 
+    /**
+     * 按用户分页查流水（对外资金明细），createTime 降序。t_asset_ledger.user_id
+     * 已存于流水行，直接按 userId 查询即可覆盖该用户全部币种账户的流水。
+     */
+    @Override
+    public Page<LedgerVO> pageLedgersByUserId(Long userId, int page, int size) {
+        Page<Ledger> p = this.page(new Page<>(Math.max(page, 1), Math.min(Math.max(size, 1), 100)),
+                new LambdaQueryWrapper<Ledger>()
+                        .eq(Ledger::getUserId, userId)
+                        .orderByDesc(Ledger::getCreateTime));
+        Page<LedgerVO> voPage = new Page<>(p.getCurrent(), p.getSize(), p.getTotal());
+        voPage.setRecords(p.getRecords().stream().map(this::toVO).toList());
+        return voPage;
+    }
+
     // ==================== 核心：资金变动统一封装 ====================
 
     /**

@@ -44,5 +44,10 @@ public interface LedgerService extends IService<Ledger> {
      */
     Page<LedgerVO> pageLedgers(Long accountId, int page, int size);
 
+    /**
+     * 按用户分页查流水（资金明细分页对外接口），createTime 降序。
+     */
+    Page<LedgerVO> pageLedgersByUserId(Long userId, int page, int size);
+
     LedgerVO toVO(Ledger ledger);
 }

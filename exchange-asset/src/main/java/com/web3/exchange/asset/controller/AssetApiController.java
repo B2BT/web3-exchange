@@ -2,8 +2,12 @@ package com.web3.exchange.asset.controller;
 
 import com.web3.exchange.asset.service.AccountService;
 import com.web3.exchange.asset.service.AssetAddressService;
+import com.web3.exchange.asset.service.LedgerService;
 import com.web3.exchange.common.asset.dto.AccountVO;
+import com.web3.exchange.common.asset.dto.LedgerVO;
+import com.web3.exchange.common.model.PageData;
 import com.web3.exchange.common.model.Result;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -25,10 +29,13 @@ public class AssetApiController {
 
     private final AccountService accountService;
     private final AssetAddressService assetAddressService;
+    private final LedgerService ledgerService;
 
-    public AssetApiController(AccountService accountService, AssetAddressService assetAddressService) {
+    public AssetApiController(AccountService accountService, AssetAddressService assetAddressService,
+                              LedgerService ledgerService) {
         this.accountService = accountService;
         this.assetAddressService = assetAddressService;
+        this.ledgerService = ledgerService;
     }
 
     /**
@@ -60,5 +67,17 @@ public class AssetApiController {
                                   @RequestParam("chainCode") String chainCode) {
         // 基础版：预留地址查询占位，Phase 2 接热钱包冷钱包派生
         return Result.success(null, "地址生成能力将在 Phase 2 接入");
+    }
+
+    /**
+     * 资金明细分页查询（按 userId），createTime 降序。page 默认1，size 默认20，上限100。
+     */
+    @Operation(summary = "资金明细分页查询")
+    @GetMapping("/ledger/list")
+    public Result<PageData<LedgerVO>> ledgerList(@RequestParam("userId") Long userId,
+                                                 @RequestParam(value = "page", defaultValue = "1") int page,
+                                                 @RequestParam(value = "size", defaultValue = "20") int size) {
+        Page<LedgerVO> voPage = ledgerService.pageLedgersByUserId(userId, page, size);
+        return Result.success(PageData.of(voPage));
     }
 }

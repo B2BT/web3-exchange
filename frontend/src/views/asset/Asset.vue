@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import * as assetApi from '@/api/asset'
 import * as chainApi from '@/api/chain'
-import type { AccountItem } from '@/api/asset'
+import type { AccountItem, LedgerItem } from '@/api/asset'
 import type { AssetAddress } from '@/api/chain'
 import { formatLong } from '@/utils/format'
 import { coinDecimals } from '@/config/market'
@@ -12,6 +12,36 @@ import { coinDecimals } from '@/config/market'
 const authStore = useAuthStore()
 
 const userId = computed(() => authStore.userInfo?.id)
+
+/** bizType 中文映射 */
+const BIZ_TYPE_MAP: Record<string, string> = {
+  FREEZE: '冻结',
+  UNFREEZE: '解冻',
+  TRANSFER_IN: '转入',
+  TRANSFER_OUT: '转出',
+  DEPOSIT: '充值',
+  WITHDRAW: '提现',
+  FEE: '手续费',
+  REBATE: '返佣',
+}
+
+/** direction 中文映射：1=入 2=出 3=冻结 4=解冻 5=冻结转出 */
+const DIRECTION_MAP: Record<number, string> = {
+  1: '入',
+  2: '出',
+  3: '冻结',
+  4: '解冻',
+  5: '冻结转出',
+}
+
+/** direction → 颜色类型（入=绿 出=红 冻结=橙） */
+const DIRECTION_COLOR: Record<number, 'green' | 'red' | 'orange'> = {
+  1: 'green',
+  2: 'red',
+  3: 'orange',
+  4: 'green',
+  5: 'orange',
+}
 
 /** 支持的币种（decimals 用于 Long 最小单位换算） */
 const COINS = ['BTC', 'ETH', 'USDT'] as const
@@ -129,7 +159,57 @@ function onSymbolChange(target: { symbol?: string; chainCode?: string }) {
   if (chains?.length) target.chainCode = chains[0]
 }
 
+// ---------- 资金明细 ----------
+const ledgerLoading = ref(false)
+const ledgerRecords = ref<LedgerItem[]>([])
+const ledgerQuery = reactive({ page: 1, size: 20 })
+const ledgerTotal = ref(0)
+
+async function loadLedger() {
+  if (!userId.value) return
+  ledgerLoading.value = true
+  try {
+    const data = await assetApi.ledgerList({
+      userId: userId.value,
+      page: ledgerQuery.page,
+      size: ledgerQuery.size,
+    })
+    ledgerRecords.value = data?.records ?? []
+    ledgerTotal.value = data?.total ?? 0
+  } finally {
+    ledgerLoading.value = false
+  }
+}
+
+function onLedgerPageChange(page: number) {
+  ledgerQuery.page = page
+  loadLedger()
+}
+
+function onLedgerSizeChange(size: number) {
+  ledgerQuery.size = size
+  ledgerQuery.page = 1
+  loadLedger()
+}
+
+/** 带符号展示：入=+，出/冻结=-（精度按币种） */
+function ledgerSigned(amount: number | undefined, direction: number | undefined, symbol: string | undefined): string {
+  const abs = formatLong(amount ?? 0, coinDecimals(symbol || ''))
+  const sign = direction === 1 || direction === 4 ? '+' : '-'
+  return `${sign}${abs}`
+}
+
 onMounted(loadAccounts)
+
+// ---------- tab 切换：切到资金明细时加载第 1 页 ----------
+const activeTab = ref('overview')
+const LEDGER_TAB = 'ledger'
+watch(activeTab, (tab) => {
+  if (tab === LEDGER_TAB) {
+    ledgerQuery.page = 1
+    loadLedger()
+  }
+})
 </script>
 
 <template>
@@ -142,9 +222,9 @@ onMounted(loadAccounts)
         </div>
       </template>
 
-      <el-tabs>
+      <el-tabs v-model="activeTab">
         <!-- 资产总览 -->
-        <el-tab-pane label="资产总览" lazy>
+        <el-tab-pane label="资产总览" name="overview" lazy>
           <el-table v-loading="overviewLoading" :data="accounts" stripe>
             <el-table-column prop="symbol" label="币种" width="140" />
             <el-table-column label="可用余额">
@@ -255,6 +335,63 @@ onMounted(loadAccounts)
             </el-form-item>
           </el-form>
         </el-tab-pane>
+
+        <!-- 资金明细 -->
+        <el-tab-pane label="资金明细" name="ledger" lazy>
+          <el-table v-loading="ledgerLoading" :data="ledgerRecords" stripe>
+            <el-table-column prop="createTime" label="时间" min-width="160" />
+            <el-table-column label="币种" width="90">
+              <template #default="{ row }">{{ row.symbol }}</template>
+            </el-table-column>
+            <el-table-column label="业务类型" width="100">
+              <template #default="{ row }">{{ BIZ_TYPE_MAP[row.bizType] || row.bizType || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="方向" width="100">
+              <template #default="{ row }">
+                <span :class="`dir-${DIRECTION_COLOR[row.direction] || 'red'}`">
+                  {{ DIRECTION_MAP[row.direction] || row.direction || '-' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="金额" min-width="140">
+              <template #default="{ row }">
+                <span :class="`dir-${DIRECTION_COLOR[row.direction] || 'red'}`">
+                  {{ ledgerSigned(row.amount, row.direction, row.symbol) }}
+                </span>
+                <span class="num"> {{ row.symbol }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="变动后可用余额" min-width="160">
+              <template #default="{ row }">
+                <span class="num">
+                  {{ formatLong(row.afterAvailable, coinDecimals(row.symbol || '')) }} {{ row.symbol }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="备注" min-width="120">
+              <template #default="{ row }">{{ row.remark || '-' }}</template>
+            </el-table-column>
+          </el-table>
+
+          <el-empty
+            v-if="!ledgerLoading && !ledgerRecords.length"
+            description="暂无资金明细"
+            style="padding: 32px 0"
+          />
+
+          <div v-if="ledgerTotal > 0" class="ledger-pager">
+            <el-pagination
+              background
+              layout="total, sizes, prev, pager, next"
+              :total="ledgerTotal"
+              :current-page="ledgerQuery.page"
+              :page-size="ledgerQuery.size"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onLedgerPageChange"
+              @size-change="onLedgerSizeChange"
+            />
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -274,5 +411,22 @@ onMounted(loadAccounts)
   margin-left: 10px;
   font-size: 12px;
   color: var(--text-dim);
+}
+.ledger-pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.dir-green {
+  color: #67c23a;
+  font-weight: 600;
+}
+.dir-red {
+  color: #f56c6c;
+  font-weight: 600;
+}
+.dir-orange {
+  color: #e6a23c;
+  font-weight: 600;
 }
 </style>

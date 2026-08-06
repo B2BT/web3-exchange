@@ -27,3 +27,44 @@ export function accounts(userId: string | number): Promise<AccountItem[]> {
 export function balance(userId: string | number, symbol: string): Promise<AccountItem> {
   return request<AccountItem>({ url: '/asset/balance', method: 'get', params: { userId, symbol } })
 }
+
+/** 资金流水视图 */
+export interface LedgerItem {
+  id?: string
+  requestId?: string
+  userId?: string | number
+  accountId?: string | number
+  symbol?: string
+  /** 业务类型：FREEZE/UNFREEZE/TRANSFER_IN/TRANSFER_OUT/DEPOSIT/WITHDRAW/FEE/REBATE */
+  bizType?: string
+  /** 方向：1=入 2=出 3=冻结 4=解冻 5=冻结转出 */
+  direction?: number
+  /** 金额（币种最小单位 Long） */
+  amount?: number
+  beforeAvailable?: number
+  afterAvailable?: number
+  beforeFrozen?: number
+  afterFrozen?: number
+  refNo?: string
+  status?: number
+  remark?: string
+  createTime?: string
+}
+
+/** 分页结果 */
+export interface LedgerPage {
+  total: number
+  current: number
+  size: number
+  pages: number
+  records: LedgerItem[]
+}
+
+/** 查询用户资金流水（分页，createTime 降序） */
+export function ledgerList(params: {
+  userId: string | number
+  page?: number
+  size?: number
+}): Promise<LedgerPage> {
+  return request<LedgerPage>({ url: '/asset/ledger/list', method: 'get', params })
+}

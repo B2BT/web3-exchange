@@ -1,6 +1,8 @@
 package com.web3.exchange.common.asset.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -20,14 +22,18 @@ public class LedgerVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Schema(description = "流水ID")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     @Schema(description = "幂等请求号")
     private String requestId;
     @Schema(description = "用户ID")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long userId;
     @Schema(description = "账户ID")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long accountId;
     @Schema(description = "币种ID")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long coinId;
     @Schema(description = "币种符号")
     private String symbol;
