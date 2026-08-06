@@ -20,6 +20,15 @@ const currentSymbol = ref('BTC/USDT')
 const side = ref<number>(1)
 /** 类型：1=限价 2=市价 */
 const orderType = ref<number>(1)
+/** 时间策略：0=GTC 1=IOC 2=FOK 3=PostOnly（默认 GTC） */
+const timeInForce = ref<number>(0)
+/** 时间策略选项 */
+const TIME_IN_FORCE_OPTIONS = [
+  { label: 'GTC', value: 0 },
+  { label: 'IOC', value: 1 },
+  { label: 'FOK', value: 2 },
+  { label: 'PostOnly', value: 3 },
+]
 const price = ref('')
 const quantity = ref('')
 const quoteAmount = ref('')
@@ -107,6 +116,17 @@ const showLimit = computed(() => orderType.value === 1)
 /** 市价买：输入 quoteAmount；市价卖：输入 quantity */
 const showQuoteAmount = computed(() => orderType.value === 2 && isBuy.value)
 const showQuantity = computed(() => orderType.value === 1 || !isBuy.value)
+/** 时间策略选项：市价单仅允许 GTC/IOC/FOK（PostOnly 仅限价）；限价单全量 */
+const tifOptions = computed(() =>
+  showLimit.value ? TIME_IN_FORCE_OPTIONS : TIME_IN_FORCE_OPTIONS.filter((o) => o.value !== 3),
+)
+/** 切换类型时：若当前策略在市价下不可用（PostOnly），回退到 GTC */
+watch(
+  () => orderType.value,
+  (t) => {
+    if (t === 2 && timeInForce.value === 3) timeInForce.value = 0
+  },
+)
 
 const buttonType = computed(() => (isBuy.value ? 'success' : 'danger'))
 const buttonText = computed(() =>
@@ -209,6 +229,8 @@ async function submit() {
     quoteAmount: showQuoteAmount.value
       ? toLong(Number(quoteAmount.value), quoteDecimals.value)
       : 0,
+    // 时间策略：默认 GTC(0)
+    timeInForce: timeInForce.value,
   }
 
   submitting.value = true
@@ -310,6 +332,20 @@ onBeforeUnmount(() => {
           @update:model-value="switchType(Number($event))"
           class="type-seg"
         />
+
+        <!-- 时间策略 -->
+        <div class="tif-row">
+          <span class="ratio-label">时间策略</span>
+          <el-radio-group v-model="timeInForce" size="small" class="tif-group">
+            <el-radio-button
+              v-for="o in tifOptions"
+              :key="o.value"
+              :value="o.value"
+            >
+              {{ o.label }}
+            </el-radio-button>
+          </el-radio-group>
+        </div>
 
         <!-- 可用余额 -->
         <div class="bal-line">
@@ -474,6 +510,21 @@ onBeforeUnmount(() => {
 }
 .ratio-btn {
   flex: 1;
+}
+/* 时间策略 */
+.tif-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+.tif-group {
+  flex: 1;
+  display: flex;
+}
+.tif-group :deep(.el-radio-button__inner) {
+  width: 100%;
+  font-size: 12px;
 }
 /* 预估联动 */
 .est-line {

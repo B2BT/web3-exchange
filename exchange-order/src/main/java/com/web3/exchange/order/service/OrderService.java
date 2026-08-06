@@ -194,6 +194,14 @@ public class OrderService {
                 || (req.getOrderType() != OrderConstant.TYPE_LIMIT && req.getOrderType() != OrderConstant.TYPE_MARKET)) {
             throw new ServiceException("无效订单类型 orderType");
         }
+        // 时间策略 timeInForce 校验：0=GTC 1=IOC 2=FOK 3=PostOnly（缺省=GTC）；PostOnly 仅支持限价
+        int tif = req.getTimeInForce() == null ? OrderConstant.TIF_GTC : req.getTimeInForce();
+        if (tif < OrderConstant.TIF_GTC || tif > OrderConstant.TIF_POST_ONLY) {
+            throw new ServiceException("无效时间策略 timeInForce");
+        }
+        if (tif == OrderConstant.TIF_POST_ONLY && req.getOrderType() != OrderConstant.TYPE_LIMIT) {
+            throw new ServiceException("PostOnly 仅支持限价单");
+        }
         long priceTick = sym.getPriceTick() == null ? 1L : sym.getPriceTick();
         if (req.getOrderType() == OrderConstant.TYPE_LIMIT) {
             if (req.getPrice() == null || req.getPrice() <= 0) {
@@ -240,6 +248,12 @@ public class OrderService {
         o.setQuoteCoin(sym.getQuoteCoin());
         o.setSide(req.getSide());
         o.setOrderType(req.getOrderType());
+        // 时间策略 + 条件单字段（条件单触发逻辑在批次B；本批仅透传落库）
+        o.setTimeInForce(req.getTimeInForce() == null ? OrderConstant.TIF_GTC : req.getTimeInForce());
+        o.setTriggerType(req.getTriggerType() == null ? OrderConstant.TRIGGER_TYPE_NONE : req.getTriggerType());
+        o.setTriggerPrice(req.getTriggerPrice() == null ? 0L : req.getTriggerPrice());
+        o.setTriggerStatus(OrderConstant.TRIGGER_STATUS_PENDING);
+        o.setOcoGroup(req.getOcoGroup() == null ? "" : req.getOcoGroup());
         o.setPrice(req.getPrice() == null ? 0L : req.getPrice());
         o.setQuoteAmount(req.getQuoteAmount() == null ? 0L : req.getQuoteAmount());
         o.setFee(0L);
@@ -318,6 +332,11 @@ public class OrderService {
         v.setQuoteCoin(o.getQuoteCoin());
         v.setSide(o.getSide());
         v.setOrderType(o.getOrderType());
+        v.setTimeInForce(o.getTimeInForce());
+        v.setTriggerType(o.getTriggerType());
+        v.setTriggerPrice(o.getTriggerPrice());
+        v.setTriggerStatus(o.getTriggerStatus());
+        v.setOcoGroup(o.getOcoGroup());
         v.setPrice(o.getPrice());
         v.setQuantity(o.getQuantity());
         v.setQuoteAmount(o.getQuoteAmount());

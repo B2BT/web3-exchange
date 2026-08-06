@@ -26,6 +26,11 @@ public class OrderVO implements Serializable {
     private String quoteCoin;
     private Integer side;
     private Integer orderType;
+    private Integer timeInForce;
+    private Integer triggerType;
+    private Long triggerPrice;
+    private Integer triggerStatus;
+    private String ocoGroup;
     private Long price;
     private Long quantity;
     private Long quoteAmount;

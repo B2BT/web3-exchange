@@ -18,6 +18,29 @@ public final class OrderConstant {
     /** 类型：市价 */
     public static final int TYPE_MARKET = 2;
 
+    /** 时间策略：GTC 长期有效（默认） */
+    public static final int TIF_GTC = 0;
+    /** 时间策略：IOC 立即成交或取消剩余 */
+    public static final int TIF_IOC = 1;
+    /** 时间策略：FOK 全部成交否则取消 */
+    public static final int TIF_FOK = 2;
+    /** 时间策略：PostOnly 只挂单不吃单（仅限价） */
+    public static final int TIF_POST_ONLY = 3;
+
+    /** 条件单类型：非条件单 */
+    public static final int TRIGGER_TYPE_NONE = 0;
+    /** 条件单类型：止盈（最新价 >= 触发价激活） */
+    public static final int TRIGGER_TYPE_TAKE_PROFIT = 1;
+    /** 条件单类型：止损（最新价 <= 触发价激活） */
+    public static final int TRIGGER_TYPE_STOP_LOSS = 2;
+
+    /** 触发状态：待触发 */
+    public static final int TRIGGER_STATUS_PENDING = 0;
+    /** 触发状态：已触发（激活为普通单） */
+    public static final int TRIGGER_STATUS_TRIGGERED = 1;
+    /** 触发状态：已取消 */
+    public static final int TRIGGER_STATUS_CANCELLED = 2;
+
     /** 状态：NEW 待撮合（挂单中） */
     public static final int STATUS_NEW = 0;
     /** 状态：PARTIAL_FILLED 部分成交 */

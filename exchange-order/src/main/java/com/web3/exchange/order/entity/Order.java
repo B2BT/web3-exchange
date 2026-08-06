@@ -38,6 +38,16 @@ public class Order extends BaseEntity {
     private Integer side;
     /** 类型：1=GTC 限价 2=MARKET 市价 */
     private Integer orderType;
+    /** 时间策略：0=GTC 1=IOC 2=FOK 3=PostOnly */
+    private Integer timeInForce;
+    /** 条件单类型：0=非条件单 1=止盈 2=止损 */
+    private Integer triggerType;
+    /** 触发价（计价币最小单位；条件单必填，普通单为0） */
+    private Long triggerPrice;
+    /** 触发状态：0=待触发 1=已触发(激活为普通单) 2=已取消 */
+    private Integer triggerStatus;
+    /** OCO 关联组号（同组两单一个触发/成交另一个自动取消） */
+    private String ocoGroup;
     /** 限价（计价币最小单位；市价为 0） */
     private Long price;
     /** 下单数量（基础币最小单位；市价买单为 0，见 quoteAmount） */

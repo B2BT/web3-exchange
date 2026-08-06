@@ -183,6 +183,19 @@ public class MatchingEngine {
     private MatchResult doMatch(OrderBook book, Order taker, PrecisionContext ctx) {
         MatchResult result = new MatchResult();
         boolean isBuy = taker.getSide() == OrderConstant.SIDE_BUY;
+        int tif = tif(taker);
+
+        // ---- 撮合策略前置处理（docs/advanced-orders.md §二）：GTC 走原有逻辑，不改行为 ----
+        // PostOnly：只挂单不吃单。若会立即与盘口成交 → 整单拒绝（不成交、不挂单）
+        if (tif == OrderConstant.TIF_POST_ONLY) {
+            return doMatchPostOnly(book, taker);
+        }
+        // FOK：盘口无法全部满足 total quantity → 整单取消（不成交、不挂单）；满足则照常撮合（自然全成交）
+        if (tif == OrderConstant.TIF_FOK && !canFillFok(book, taker, ctx)) {
+            taker.setStatus(OrderConstant.STATUS_CANCELLED);
+            taker.setCancelTime(java.time.LocalDateTime.now());
+            return result;
+        }
 
         if (isBuy) {
             if (taker.getOrderType() == OrderConstant.TYPE_LIMIT) {
@@ -262,6 +275,19 @@ public class MatchingEngine {
         }
 
         // 吃单最终状态：remaining==0 → FILLED；限价剩余>0 → 入簿（已成交>0 则 PARTIAL）；市价剩余不落簿
+        if (tif == OrderConstant.TIF_IOC || tif == OrderConstant.TIF_FOK) {
+            // IOC/FOK：只撮合当前可成交部分，剩余作废不挂单（即使限价）。全部满足→FILLED；否则整单终态取消
+            boolean fullyExecuted = taker.getRemaining() == 0
+                    && (!(isBuy && taker.getOrderType() == OrderConstant.TYPE_MARKET) || taker.getQuoteAmount() == 0);
+            if (fullyExecuted) {
+                taker.setStatus(OrderConstant.STATUS_FILLED);
+                taker.setFilledTime(java.time.LocalDateTime.now());
+            } else {
+                taker.setStatus(OrderConstant.STATUS_CANCELLED);
+                taker.setCancelTime(java.time.LocalDateTime.now());
+            }
+            return result;
+        }
         if (taker.getRemaining() == 0) {
             taker.setStatus(OrderConstant.STATUS_FILLED);
             taker.setFilledTime(java.time.LocalDateTime.now());
@@ -276,6 +302,67 @@ public class MatchingEngine {
         }
 
         return result;
+    }
+
+    /** 取订单时间策略，null 兜底为 GTC（兼容旧数据/挂单恢复）。 */
+    private static int tif(Order o) {
+        return o.getTimeInForce() == null ? OrderConstant.TIF_GTC : o.getTimeInForce();
+    }
+
+    /**
+     * PostOnly 撮合：只挂单不吃单。
+     * <p>若买单会与盘口（bestAsk <= 限价）或卖单会与盘口（bestBid >= 限价）立即成交，
+     * 则整单拒绝（不成交、不挂单），标记 REJECTED + remark。否则作为 maker 直接入簿。</p>
+     */
+    private MatchResult doMatchPostOnly(OrderBook book, Order taker) {
+        MatchResult result = new MatchResult();
+        boolean isBuy = taker.getSide() == OrderConstant.SIDE_BUY;
+        Order best = isBuy ? book.bestAsk() : book.bestBid();
+        boolean wouldCross = (isBuy && best != null && best.getPrice() <= taker.getPrice())
+                || (!isBuy && best != null && best.getPrice() >= taker.getPrice());
+        if (wouldCross) {
+            taker.setStatus(OrderConstant.STATUS_REJECTED);
+            taker.setRemark("PostOnly订单可能立即成交");
+            return result; // 不成交、不挂单
+        }
+        taker.setStatus(OrderConstant.STATUS_NEW);
+        book.add(taker); // 不交叉：只挂单，作为 maker 入簿
+        return result;
+    }
+
+    /**
+     * FOK 前置评估：盘口能否全部满足 taker 的 total intent。
+     * <p>限价单按 quantity 在可穿透价格内累加剩余；市价买单按预算在盘口全部卖盘上的可花费额累加；
+     * 市价卖单按 quantity 累加买盘全部剩余。满足返回 true（可照常撮合 → 自然全成交）。</p>
+     */
+    private boolean canFillFok(OrderBook book, Order taker, PrecisionContext ctx) {
+        boolean isBuy = taker.getSide() == OrderConstant.SIDE_BUY;
+        if (isBuy) {
+            if (taker.getOrderType() == OrderConstant.TYPE_LIMIT) {
+                long total = 0;
+                for (Order m : book.asksUpTo(taker.getPrice())) {
+                    total += m.getRemaining();
+                }
+                return total >= taker.getRemaining();
+            }
+            // 市价买单：预算能否被盘口完全消耗（total 可花费名义额）
+            long spendable = 0;
+            for (Order m : book.allAsks()) {
+                spendable += ctx.quoteAmount(m.getPrice(), m.getRemaining());
+            }
+            return spendable >= taker.getQuoteAmount();
+        }
+        long total = 0;
+        if (taker.getOrderType() == OrderConstant.TYPE_LIMIT) {
+            for (Order m : book.bidsFrom(taker.getPrice())) {
+                total += m.getRemaining();
+            }
+        } else {
+            for (Order m : book.allBids()) {
+                total += m.getRemaining();
+            }
+        }
+        return total >= taker.getRemaining();
     }
 
     /**

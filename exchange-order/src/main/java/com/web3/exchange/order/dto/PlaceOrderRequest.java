@@ -35,6 +35,14 @@ public class PlaceOrderRequest implements Serializable {
     private Long quantity;
     @Schema(description = "市价买单预算额（计价币最小单位）")
     private Long quoteAmount;
+    @Schema(description = "时间策略：0=GTC 1=IOC 2=FOK 3=PostOnly（默认0=GTC）")
+    private Integer timeInForce;
+    @Schema(description = "条件单类型：0=非条件单 1=止盈 2=止损（批次B生效）")
+    private Integer triggerType;
+    @Schema(description = "触发价（计价币最小单位；条件单必填）")
+    private Long triggerPrice;
+    @Schema(description = "OCO 关联组号（批次B生效）")
+    private String ocoGroup;
     @Schema(description = "客户端订单号（客户端幂等）")
     private String clientOid;
 }

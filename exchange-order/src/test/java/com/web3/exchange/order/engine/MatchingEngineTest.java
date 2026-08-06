@@ -159,4 +159,82 @@ class MatchingEngineTest {
         assertEquals(3L, r.trades.get(0).getQuantity());
         assertEquals(OrderConstant.STATUS_PARTIAL, buy2.getStatus(), "再买4只成交3 → PARTIAL");
     }
+
+    // ---------- 进阶订单类型撮合策略（docs/advanced-orders.md §二）：PostOnly / IOC / FOK ----------
+
+    @Test
+    void postOnly_crossPrice_rejected() {
+        // 簿内卖 @100，PostOnly 限价买 @100 → 会立即成交 → 整单拒绝（不成交、不挂单）
+        engine.match(order(1, OrderConstant.SIDE_SELL, OrderConstant.TYPE_LIMIT, 100, 5, 5, 1));
+        Order buy = order(10, OrderConstant.SIDE_BUY, OrderConstant.TYPE_LIMIT, 100, 3, 3, 2);
+        buy.setTimeInForce(OrderConstant.TIF_POST_ONLY);
+        MatchingEngine.MatchResult r = engine.match(buy);
+        assertTrue(r.trades.isEmpty(), "PostOnly 交叉价不成交");
+        assertEquals(OrderConstant.STATUS_REJECTED, buy.getStatus());
+        assertEquals("PostOnly订单可能立即成交", buy.getRemark());
+        assertEquals(1, engine.orderCount("BTC/USDT"), "拒绝单不挂簿，盘口仅剩原卖单");
+    }
+
+    @Test
+    void postOnly_noCross_restsInBook() {
+        // 簿内卖 @101，PostOnly 限价买 @100 → 不交叉 → 作为 maker 入簿
+        engine.match(order(1, OrderConstant.SIDE_SELL, OrderConstant.TYPE_LIMIT, 101, 5, 5, 1));
+        Order buy = order(10, OrderConstant.SIDE_BUY, OrderConstant.TYPE_LIMIT, 100, 3, 3, 2);
+        buy.setTimeInForce(OrderConstant.TIF_POST_ONLY);
+        MatchingEngine.MatchResult r = engine.match(buy);
+        assertTrue(r.trades.isEmpty(), "PostOnly 不交叉不成交");
+        assertEquals(OrderConstant.STATUS_NEW, buy.getStatus());
+        assertEquals(2, engine.orderCount("BTC/USDT"), "PostOnly 不交叉单挂簿");
+    }
+
+    @Test
+    void ioc_partialFill_remainderVoided() {
+        // 簿内卖 @100 x5，IOC 限价买 @100 x7 → 成交5，剩余2作废不挂单
+        engine.match(order(1, OrderConstant.SIDE_SELL, OrderConstant.TYPE_LIMIT, 100, 5, 5, 1));
+        Order buy = order(10, OrderConstant.SIDE_BUY, OrderConstant.TYPE_LIMIT, 100, 7, 7, 2);
+        buy.setTimeInForce(OrderConstant.TIF_IOC);
+        MatchingEngine.MatchResult r = engine.match(buy);
+        assertEquals(1, r.trades.size());
+        assertEquals(5L, r.trades.get(0).getQuantity());
+        assertEquals(2L, buy.getRemaining(), "IOC 剩余保留但作废");
+        assertEquals(OrderConstant.STATUS_CANCELLED, buy.getStatus(), "IOC 部分成交剩余作废→终态取消");
+        assertEquals(0, engine.orderCount("BTC/USDT"), "IOC 剩余不挂簿(卖单已满成)");
+    }
+
+    @Test
+    void ioc_noFill_cancelledWhole() {
+        // 簿内卖 @101，IOC 限价买 @100 x3 → 无成交 → 整单取消（不挂簿）
+        engine.match(order(1, OrderConstant.SIDE_SELL, OrderConstant.TYPE_LIMIT, 101, 5, 5, 1));
+        Order buy = order(10, OrderConstant.SIDE_BUY, OrderConstant.TYPE_LIMIT, 100, 3, 3, 2);
+        buy.setTimeInForce(OrderConstant.TIF_IOC);
+        MatchingEngine.MatchResult r = engine.match(buy);
+        assertTrue(r.trades.isEmpty());
+        assertEquals(OrderConstant.STATUS_CANCELLED, buy.getStatus(), "IOC 未成交剩余作废→取消");
+        assertEquals(1, engine.orderCount("BTC/USDT"), "IOC 不挂簿，仅剩原卖单");
+    }
+
+    @Test
+    void fok_cannotFullyFill_cancelledWhole() {
+        // 簿内卖 @100 x5，FOK 限价买 @100 x7 → 盘口不足 → 整单取消（不成交、不挂单）
+        engine.match(order(1, OrderConstant.SIDE_SELL, OrderConstant.TYPE_LIMIT, 100, 5, 5, 1));
+        Order buy = order(10, OrderConstant.SIDE_BUY, OrderConstant.TYPE_LIMIT, 100, 7, 7, 2);
+        buy.setTimeInForce(OrderConstant.TIF_FOK);
+        MatchingEngine.MatchResult r = engine.match(buy);
+        assertTrue(r.trades.isEmpty(), "FOK 不足整单不成交");
+        assertEquals(OrderConstant.STATUS_CANCELLED, buy.getStatus());
+        assertEquals(1, engine.orderCount("BTC/USDT"), "FOK 取消不挂簿，仅剩原卖单");
+    }
+
+    @Test
+    void fok_fullyFillable_fillsAll() {
+        // 簿内卖 @100 x5，FOK 限价买 @100 x5 → 恰好全成交 → FILLED
+        engine.match(order(1, OrderConstant.SIDE_SELL, OrderConstant.TYPE_LIMIT, 100, 5, 5, 1));
+        Order buy = order(10, OrderConstant.SIDE_BUY, OrderConstant.TYPE_LIMIT, 100, 5, 5, 2);
+        buy.setTimeInForce(OrderConstant.TIF_FOK);
+        MatchingEngine.MatchResult r = engine.match(buy);
+        assertEquals(1, r.trades.size());
+        assertEquals(5L, r.trades.get(0).getQuantity());
+        assertEquals(0L, buy.getRemaining());
+        assertEquals(OrderConstant.STATUS_FILLED, buy.getStatus());
+    }
 }

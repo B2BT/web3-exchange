@@ -50,6 +50,48 @@ public class OrderBook {
         return peek(bids);
     }
 
+    /** 卖盘：价格 <= 上限的所有活跃挂单快照（价格升序，FOK/评估用）。 */
+    public java.util.List<Order> asksUpTo(long priceLimit) {
+        java.util.List<Order> out = new java.util.ArrayList<>();
+        for (Map.Entry<Long, PriorityQueue<Order>> e : asks.entrySet()) {
+            if (e.getKey() > priceLimit) {
+                break;
+            }
+            out.addAll(e.getValue());
+        }
+        return out;
+    }
+
+    /** 买盘：价格 >= 下限的所有活跃挂单快照（价格降序，FOK/评估用）。 */
+    public java.util.List<Order> bidsFrom(long priceFloor) {
+        java.util.List<Order> out = new java.util.ArrayList<>();
+        for (Map.Entry<Long, PriorityQueue<Order>> e : bids.entrySet()) {
+            if (e.getKey() < priceFloor) {
+                break;
+            }
+            out.addAll(e.getValue());
+        }
+        return out;
+    }
+
+    /** 卖盘全部活跃挂单快照（价格升序，市价 FOK/评估用）。 */
+    public java.util.List<Order> allAsks() {
+        java.util.List<Order> out = new java.util.ArrayList<>();
+        for (PriorityQueue<Order> q : asks.values()) {
+            out.addAll(q);
+        }
+        return out;
+    }
+
+    /** 买盘全部活跃挂单快照（价格降序，市价 FOK/评估用）。 */
+    public java.util.List<Order> allBids() {
+        java.util.List<Order> out = new java.util.ArrayList<>();
+        for (PriorityQueue<Order> q : bids.values()) {
+            out.addAll(q);
+        }
+        return out;
+    }
+
     /** 从簿移除（挂单成交归零或撤单）。 */
     public void remove(Order o) {
         if (o.getSide() == OrderConstant.SIDE_BUY) {

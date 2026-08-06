@@ -14,6 +14,8 @@ export interface PlaceOrderRequest {
   quantity?: number | null
   /** 市价买单预算额（计价币最小单位） */
   quoteAmount?: number | null
+  /** 时间策略：0=GTC(长期有效) 1=IOC(立即成交或取消剩余) 2=FOK(全部成交否则取消) 3=PostOnly(只挂单不吃单) */
+  timeInForce?: number
   /** 客户端幂等号 */
   clientOid?: string
 }
