@@ -72,7 +72,7 @@ function render(rows: KlineItem[]) {
     const up = (r.close ?? 0) >= (r.open ?? 0)
     vols.push({
       value: r.volume ?? 0,
-      itemStyle: { color: up ? 'rgba(38,166,154,0.55)' : 'rgba(239,83,80,0.55)' },
+      itemStyle: { color: up ? 'rgba(34,197,94,0.45)' : 'rgba(239,68,68,0.45)' },
     })
   }
   // eslint-disable-next-line no-console
@@ -115,7 +115,7 @@ function render(rows: KlineItem[]) {
       `高: <b>${fmt(k[3])}</b>`,
       `量: ${fmt(vols[idx].value, bd)}`,
       `MA5: <span style="color:#f59e0b">${fmt(ma5[idx])}</span>`,
-      `MA10: <span style="color:#60a5fa">${fmt(ma10[idx])}</span>`,
+      `MA10: <span style="color:#22d3ee">${fmt(ma10[idx])}</span>`,
       `MA20: <span style="color:#a78bfa">${fmt(ma20[idx])}</span>`,
     ].join('<br/>')
   }
@@ -123,19 +123,22 @@ function render(rows: KlineItem[]) {
   c.setOption(
     {
       animation: false,
-      axisPointer: { link: [{ xAxisIndex: 'all' }], label: { backgroundColor: '#3a3d51' } },
+      axisPointer: {
+        link: [{ xAxisIndex: 'all' }],
+        label: { backgroundColor: '#1e293b', color: '#e5e7eb' },
+      },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
-        backgroundColor: 'rgba(26,28,44,0.92)',
-        borderColor: '#3a3d51',
+        backgroundColor: 'rgba(17,24,39,0.92)',
+        borderColor: '#334155',
         textStyle: { color: '#e5e7eb' },
         formatter: tooltipFmt,
       },
       legend: {
         top: 0,
         right: 8,
-        textStyle: { color: '#909399', fontSize: 11 },
+        textStyle: { color: '#64748b', fontSize: 11 },
         itemWidth: 14,
         itemHeight: 8,
         data: ['MA5', 'MA10', 'MA20'],
@@ -149,8 +152,8 @@ function render(rows: KlineItem[]) {
           type: 'category',
           data: cats,
           boundaryGap: true,
-          axisLine: { lineStyle: { color: '#3a3d51' } },
-          axisLabel: { color: '#909399' },
+          axisLine: { lineStyle: { color: '#334155' } },
+          axisLabel: { color: '#64748b' },
           splitLine: { show: false },
           min: 'dataMin',
           max: 'dataMax',
@@ -160,7 +163,7 @@ function render(rows: KlineItem[]) {
           gridIndex: 1,
           data: cats,
           boundaryGap: true,
-          axisLine: { lineStyle: { color: '#3a3d51' } },
+          axisLine: { lineStyle: { color: '#334155' } },
           axisLabel: { show: false },
           axisTick: { show: false },
         },
@@ -170,8 +173,8 @@ function render(rows: KlineItem[]) {
           scale: true,
           min: 'dataMin',
           max: 'dataMax',
-          splitLine: { lineStyle: { color: 'rgba(0,0,0,0.06)' } },
-          axisLabel: { color: '#909399', formatter: (v: number) => formatLong(v, pd, 2) },
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+          axisLabel: { color: '#64748b', formatter: (v: number) => formatLong(v, pd, 2) },
         },
         {
           gridIndex: 1,
@@ -190,10 +193,10 @@ function render(rows: KlineItem[]) {
           type: 'candlestick',
           data: ohlc,
           itemStyle: {
-            color: '#26a69a',
-            color0: '#ef5350',
-            borderColor: '#26a69a',
-            borderColor0: '#ef5350',
+            color: '#22c55e',
+            color0: '#ef4444',
+            borderColor: '#22c55e',
+            borderColor0: '#ef4444',
           },
         },
         {
@@ -217,7 +220,7 @@ function render(rows: KlineItem[]) {
           data: ma10,
           smooth: true,
           symbol: 'none',
-          lineStyle: { width: 1.2, color: '#60a5fa' },
+          lineStyle: { width: 1.4, color: '#22d3ee' },
         },
         {
           name: 'MA20',

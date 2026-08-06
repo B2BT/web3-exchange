@@ -58,9 +58,11 @@ async function handleLogout() {
       <div class="header-right">
         <el-dropdown>
           <span class="user-info">
-            <el-avatar :size="28" :src="userAvatar">
-              {{ displayName.charAt(0).toUpperCase() }}
-            </el-avatar>
+            <span class="avatar-ring">
+              <el-avatar :size="24" :src="userAvatar">
+                {{ displayName.charAt(0).toUpperCase() }}
+              </el-avatar>
+            </span>
             <span class="username">{{ displayName }}</span>
             <el-icon><ArrowDown /></el-icon>
           </span>
@@ -79,7 +81,11 @@ async function handleLogout() {
     </el-header>
 
     <el-main class="layout-main">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="page-fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </el-main>
   </el-container>
 </template>
@@ -92,10 +98,16 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  /* 玻璃拟态顶栏 */
+  background: rgba(10, 14, 23, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
   padding: 0 24px;
   height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 .header-left {
   display: flex;
@@ -105,19 +117,78 @@ async function handleLogout() {
 .logo {
   font-size: 20px;
   font-weight: 700;
-  color: #1a1c2c;
   cursor: pointer;
   white-space: nowrap;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.45));
+  transition: filter 0.25s;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 20px rgba(34, 211, 238, 0.6));
 }
 .header-menu {
   border-bottom: none;
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: var(--text-secondary);
+  --el-menu-active-color: #fff;
+  --el-menu-hover-bg-color: transparent;
+}
+.header-menu :deep(.el-menu-item) {
+  border-bottom: none;
+  font-size: 14px;
+  position: relative;
+  transition: color 0.2s;
+}
+.header-menu :deep(.el-menu-item:hover) {
+  color: #fff;
+  background: transparent;
+}
+.header-menu :deep(.el-menu-item.is-active) {
+  color: #fff;
+  font-weight: 600;
+}
+/* active 底部渐变指示条 */
+.header-menu :deep(.el-menu-item.is-active)::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent-grad);
+  box-shadow: var(--glow-purple);
 }
 .header-right .user-info {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #303133;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.header-right .user-info:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+/* 头像渐变环 */
+.avatar-ring {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  box-shadow: var(--glow-purple);
+  flex-shrink: 0;
+}
+.avatar-ring :deep(.el-avatar) {
+  background: var(--bg-elevated);
+  color: #fff;
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 .username {
   max-width: 120px;
@@ -126,7 +197,22 @@ async function handleLogout() {
   white-space: nowrap;
 }
 .layout-main {
-  background: #f5f7fa;
+  background: transparent;
   padding: 0;
+  overflow-y: auto;
+}
+
+/* 页面切换：fade + 轻微上移 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>

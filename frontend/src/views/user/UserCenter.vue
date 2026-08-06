@@ -52,13 +52,15 @@ onMounted(() => {
 
 <template>
   <div class="page-container">
-    <el-card shadow="never" v-loading="loading">
+    <el-card shadow="never" class="g-card" v-loading="loading">
       <template #header>用户中心</template>
 
       <div class="profile-head">
-        <el-avatar :size="64" :src="profile?.avatar || authStore.userInfo?.avatar">
-          {{ (profile?.nickname || authStore.displayName || 'U').charAt(0).toUpperCase() }}
-        </el-avatar>
+        <span class="profile-avatar-ring">
+          <el-avatar :size="60" :src="profile?.avatar || authStore.userInfo?.avatar">
+            {{ (profile?.nickname || authStore.displayName || 'U').charAt(0).toUpperCase() }}
+          </el-avatar>
+        </span>
         <div>
           <div class="nickname">{{ profile?.nickname || authStore.displayName }}</div>
           <div class="username">@{{ profile?.username || authStore.userInfo?.username }}</div>
@@ -102,17 +104,32 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
 }
+/* 头像渐变环 */
+.profile-avatar-ring {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  box-shadow: var(--glow-purple);
+  flex-shrink: 0;
+}
+.profile-avatar-ring :deep(.el-avatar) {
+  background: var(--bg-elevated);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
 .nickname {
   font-size: 20px;
   font-weight: 700;
+  color: var(--text-primary);
 }
 .username {
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 .kyc-level {
   margin-left: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 </style>

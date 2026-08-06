@@ -114,7 +114,7 @@ async function submit() {
 
 <template>
   <div class="trade-page">
-    <el-card shadow="never" class="trade-card">
+    <el-card shadow="never" class="trade-card g-card">
       <template #header>
         <div class="trade-title">
           <span>现货交易</span>
@@ -214,5 +214,10 @@ async function submit() {
 }
 .balance-tip {
   margin-top: 16px;
+}
+/* 数字输入等宽对齐 */
+.trade-card :deep(.el-input__inner) {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
 }
 </style>

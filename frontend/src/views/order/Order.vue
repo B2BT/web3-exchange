@@ -110,7 +110,7 @@ onMounted(() => {
 
 <template>
   <div class="page-container">
-    <el-card shadow="never">
+    <el-card shadow="never" class="g-card">
       <template #header>
         <span>订单与资金流水</span>
       </template>
@@ -161,13 +161,13 @@ onMounted(() => {
                 </el-tag>
               </el-descriptions-item>
               <el-descriptions-item label="均价">
-                {{ formatLong(order.avgPrice, coinDecimals(order.quoteCoin || 'USDT')) }}
+                <span class="num">{{ formatLong(order.avgPrice, coinDecimals(order.quoteCoin || 'USDT')) }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="数量">
-                {{ formatLong(order.quantity, coinDecimals(order.baseCoin || '')) }}
+                <span class="num">{{ formatLong(order.quantity, coinDecimals(order.baseCoin || '')) }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="已成交">
-                {{ formatLong(order.filledAmount, coinDecimals(order.baseCoin || '')) }}
+                <span class="num">{{ formatLong(order.filledAmount, coinDecimals(order.baseCoin || '')) }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="创建时间">{{ order.createTime || '-' }}</el-descriptions-item>
             </el-descriptions>
@@ -177,17 +177,17 @@ onMounted(() => {
               <el-table-column prop="tradeNo" label="成交号" />
               <el-table-column label="价格">
                 <template #default="{ row }">
-                  {{ formatLong(row.price, coinDecimals(row.symbol?.split('/')[1] || 'USDT')) }}
+                  <span class="num">{{ formatLong(row.price, coinDecimals(row.symbol?.split('/')[1] || 'USDT')) }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="数量">
                 <template #default="{ row }">
-                  {{ formatLong(row.quantity, coinDecimals(row.symbol?.split('/')[0] || '')) }}
+                  <span class="num">{{ formatLong(row.quantity, coinDecimals(row.symbol?.split('/')[0] || '')) }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="成交额">
                 <template #default="{ row }">
-                  {{ formatLong(row.quoteAmount, coinDecimals(row.symbol?.split('/')[1] || 'USDT')) }}
+                  <span class="num">{{ formatLong(row.quoteAmount, coinDecimals(row.symbol?.split('/')[1] || 'USDT')) }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="时间">
@@ -205,7 +205,7 @@ onMounted(() => {
             <el-table-column prop="chainCode" label="链" width="90" />
             <el-table-column label="金额">
               <template #default="{ row }">
-                {{ formatLong(row.amount, coinDecimals(row.symbol)) }} {{ row.symbol }}
+                <span class="num">{{ formatLong(row.amount, coinDecimals(row.symbol)) }} {{ row.symbol }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="txHash" label="交易哈希" min-width="180" show-overflow-tooltip />
@@ -242,12 +242,12 @@ onMounted(() => {
             <el-table-column prop="toAddress" label="目标地址" min-width="180" show-overflow-tooltip />
             <el-table-column label="金额">
               <template #default="{ row }">
-                {{ formatLong(row.amount, coinDecimals(row.symbol)) }} {{ row.symbol }}
+                <span class="num">{{ formatLong(row.amount, coinDecimals(row.symbol)) }} {{ row.symbol }}</span>
               </template>
             </el-table-column>
             <el-table-column label="手续费">
               <template #default="{ row }">
-                {{ formatLong(row.fee, coinDecimals(row.symbol)) }}
+                <span class="num">{{ formatLong(row.fee, coinDecimals(row.symbol)) }}</span>
               </template>
             </el-table-column>
             <el-table-column label="状态" width="110">

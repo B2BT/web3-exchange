@@ -75,7 +75,7 @@ onMounted(() => {
 
 <template>
   <div class="page-container">
-    <el-card shadow="never">
+    <el-card shadow="never" class="g-card">
       <template #header>
         <div class="card-header">
           <div class="header-title">
@@ -103,7 +103,7 @@ onMounted(() => {
         <el-table-column prop="content" label="内容" min-width="220" show-overflow-tooltip />
         <el-table-column label="关联金额" width="150">
           <template #default="{ row }">
-            <span v-if="row.amount != null">
+            <span v-if="row.amount != null" class="num">
               {{ formatLong(row.amount, coinDecimals(row.symbol || '')) }} {{ row.symbol }}
             </span>
             <span v-else>-</span>
@@ -155,10 +155,10 @@ onMounted(() => {
 }
 .unread-zero {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-dim);
 }
 .read-mark {
   font-size: 12px;
-  color: #c0c4cc;
+  color: var(--text-dim);
 }
 </style>

@@ -134,7 +134,7 @@ onMounted(loadAccounts)
 
 <template>
   <div class="page-container">
-    <el-card shadow="never">
+    <el-card shadow="never" class="g-card">
       <template #header>
         <div class="card-header">
           <span>资产</span>
@@ -149,17 +149,17 @@ onMounted(loadAccounts)
             <el-table-column prop="symbol" label="币种" width="140" />
             <el-table-column label="可用余额">
               <template #default="{ row }">
-                {{ formatLong(row.available, coinDecimals(row.symbol)) }} {{ row.symbol }}
+                <span class="num">{{ formatLong(row.available, coinDecimals(row.symbol)) }} {{ row.symbol }}</span>
               </template>
             </el-table-column>
             <el-table-column label="冻结余额">
               <template #default="{ row }">
-                {{ formatLong(row.frozen, coinDecimals(row.symbol)) }} {{ row.symbol }}
+                <span class="num">{{ formatLong(row.frozen, coinDecimals(row.symbol)) }} {{ row.symbol }}</span>
               </template>
             </el-table-column>
             <el-table-column label="总余额">
               <template #default="{ row }">
-                <b>{{ formatLong(row.total, coinDecimals(row.symbol)) }}</b> {{ row.symbol }}
+                <b class="num">{{ formatLong(row.total, coinDecimals(row.symbol)) }}</b> <span class="num">{{ row.symbol }}</span>
               </template>
             </el-table-column>
             <el-table-column label="账户状态" width="120">
@@ -273,6 +273,6 @@ onMounted(loadAccounts)
 .unit-hint {
   margin-left: 10px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-dim);
 }
 </style>

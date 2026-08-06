@@ -60,7 +60,7 @@ onMounted(loadTickers)
 <template>
   <div class="market-page">
     <!-- 顶部：交易对选择 + 周期切换 -->
-    <el-card shadow="never" class="toolbar-card">
+    <el-card shadow="never" class="toolbar-card g-card">
       <div class="toolbar">
         <el-select v-model="currentSymbol" style="width: 180px" placeholder="选择交易对">
           <el-option
@@ -104,7 +104,7 @@ onMounted(loadTickers)
     </el-card>
 
     <!-- ticker 卡片 -->
-    <el-card shadow="never" class="ticker-card">
+    <el-card shadow="never" class="ticker-card g-card">
       <el-row :gutter="16" v-if="currentTicker">
         <el-col :span="6">
           <div class="tick-label">{{ currentSymbol }} 最新价</div>
@@ -143,7 +143,7 @@ onMounted(loadTickers)
     </el-card>
 
     <!-- K线图 -->
-    <el-card shadow="never" class="kline-card">
+    <el-card shadow="never" class="kline-card g-card">
       <template #header>
         <div class="kline-header">
           <span class="kline-title">{{ currentSymbol }} 价格走势（{{ period }}）</span>
@@ -176,20 +176,24 @@ onMounted(loadTickers)
 }
 .tick-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-dim);
   margin-bottom: 6px;
 }
 .tick-value {
   font-size: 20px;
   font-weight: 700;
-  color: #303133;
+  color: var(--text-primary);
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
 }
 .tick-value.up {
-  color: #26a69a;
+  color: var(--up);
+  text-shadow: 0 0 16px rgba(34, 197, 94, 0.4);
 }
 .tick-value.down {
-  color: #ef5350;
+  color: var(--down);
+  text-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
 }
 .kline-title {
   font-weight: 600;

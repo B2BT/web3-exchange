@@ -11,9 +11,10 @@ body,
 #app {
   height: 100%;
   width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  background-color: #f5f7fa;
+  font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    sans-serif;
+  background-color: #0a0e17;
+  color: #e5e7eb;
 }
 
 a {
@@ -23,4 +24,20 @@ a {
 
 .page-container {
   padding: 20px;
+}
+
+/* 滚动条深色适配 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2d3748;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

@@ -96,7 +96,7 @@ onMounted(loadCaptcha)
 
 <template>
   <div class="register-page">
-    <div class="register-card">
+    <div class="register-card g-card">
       <div class="logo">Web3 交易所</div>
       <div class="subtitle">创建新账户</div>
 
@@ -152,25 +152,40 @@ onMounted(loadCaptcha)
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1c2c 0%, #2b2f4a 50%, #3a3d63 100%);
+  background: transparent;
   padding: 20px;
 }
 .register-card {
   width: 420px;
-  background: #fff;
-  border-radius: 12px;
+  background: var(--glass-bg-strong);
+  border-radius: var(--radius);
   padding: 32px 36px 24px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), var(--glow-purple);
+  animation: fadeInUp 0.5s ease;
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .logo {
   font-size: 26px;
   font-weight: 700;
-  color: #1a1c2c;
   text-align: center;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 16px rgba(124, 58, 237, 0.5));
 }
 .subtitle {
   text-align: center;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 13px;
   margin: 6px 0 20px;
 }
@@ -185,15 +200,19 @@ onMounted(loadCaptcha)
 .captcha-img {
   width: 110px;
   height: 40px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
+  background: rgba(15, 23, 42, 0.55);
   flex-shrink: 0;
+  transition: border-color 0.2s;
+}
+.captcha-img:hover {
+  border-color: var(--glass-hover-border);
 }
 .captcha-img :deep(.el-image) {
   width: 100%;
@@ -202,7 +221,7 @@ onMounted(loadCaptcha)
 .captcha-text {
   font-size: 20px;
   font-weight: 700;
-  color: #409eff;
+  color: var(--accent-cyan);
   font-style: italic;
 }
 .reg-btn {
@@ -214,6 +233,10 @@ onMounted(loadCaptcha)
   font-size: 13px;
 }
 .reg-footer a {
-  color: #409eff;
+  color: var(--accent-cyan);
+  transition: color 0.2s;
+}
+.reg-footer a:hover {
+  color: var(--accent-purple);
 }
 </style>
