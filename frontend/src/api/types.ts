@@ -32,6 +32,7 @@ export interface UserInfo {
   avatar?: string
   gender?: number
   status?: number
+  role?: string
   roles?: string[]
   permissions?: string[]
   authorities?: string[]
