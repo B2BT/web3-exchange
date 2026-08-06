@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.web3.exchange.order.constant.OrderConstant;
 import com.web3.exchange.order.entity.Order;
 import com.web3.exchange.order.entity.Trade;
+import com.web3.exchange.order.util.QuoteCalculator.PrecisionContext;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -114,17 +115,30 @@ public class MatchingEngine {
     }
 
     /**
-     * 撮合新订单（入口，先按交易对加锁串行化）。
+     * 撮合新订单（入口，先按交易对加锁串行化）。等价于 {@link #match(Order, PrecisionContext)} 传全 0 精度上下文
+     * （quoteAmount = price × qty），供单测/无精度场景使用。
      *
      * @param taker 新下单（含已落库的 id/orderNo/createTime）
      * @return 撮合结果（成交列表 + 需更新的挂单）
      */
     public MatchResult match(Order taker) {
+        return match(taker, PrecisionContext.ZERO);
+    }
+
+    /**
+     * 撮合新订单（入口，先按交易对加锁串行化）。
+     *
+     * @param taker 新下单（含已落库的 id/orderNo/createTime）
+     * @param ctx   该交易对的精度上下文（price_precision/amount_precision/quoteDecimals），
+     *              撮合与冻结必须用同一上下文以保证买卖双方 quoteAmount 算法一致
+     * @return 撮合结果（成交列表 + 需更新的挂单）
+     */
+    public MatchResult match(Order taker, PrecisionContext ctx) {
         ReentrantLock lock = locks.computeIfAbsent(taker.getSymbol(), k -> new ReentrantLock());
         lock.lock();
         try {
             OrderBook book = books.computeIfAbsent(taker.getSymbol(), k -> new OrderBook());
-            return doMatch(book, taker);
+            return doMatch(book, taker, ctx);
         } finally {
             lock.unlock();
         }
@@ -133,7 +147,7 @@ public class MatchingEngine {
     /**
      * 撮合核心（纯逻辑，不依赖 DB；调用方须已持有本交易对的锁）。
      */
-    private MatchResult doMatch(OrderBook book, Order taker) {
+    private MatchResult doMatch(OrderBook book, Order taker, PrecisionContext ctx) {
         MatchResult result = new MatchResult();
         boolean isBuy = taker.getSide() == OrderConstant.SIDE_BUY;
 
@@ -146,7 +160,7 @@ public class MatchingEngine {
                         break; // 价格不可穿透
                     }
                     long qty = Math.min(taker.getRemaining(), maker.getRemaining());
-                    fill(taker, maker, qty, result);
+                    fill(taker, maker, qty, result, ctx);
                     if (maker.getRemaining() == 0) {
                         book.remove(maker);
                     }
@@ -158,13 +172,26 @@ public class MatchingEngine {
                     if (maker == null) {
                         break;
                     }
-                    long maxQty = taker.getQuoteAmount() / maker.getPrice(); // 预算能买的最大数量
+                    // 预算能买的最大数量：1 个基础币最小单位的名义额 = ctx.quoteAmount(price, 1)
+                    long unitCost = ctx.quoteAmount(maker.getPrice(), 1L);
+                    if (unitCost <= 0) {
+                        break; // 1 个最小单位的预算都不够，无法撮合
+                    }
+                    long maxQty = taker.getQuoteAmount() / unitCost;
                     if (maxQty <= 0) {
                         break; // 预算不足以买 1 个最小单位
                     }
                     long qty = Math.min(maxQty, maker.getRemaining());
-                    long spent = maker.getPrice() * qty;
-                    fill(taker, maker, qty, result);
+                    long spent = ctx.quoteAmount(maker.getPrice(), qty);
+                    // 四舍五入兜底：若 round 后 spent 越过预算，回退到不超过预算的最大数量
+                    while (spent > taker.getQuoteAmount() && qty > 0) {
+                        qty--;
+                        spent = ctx.quoteAmount(maker.getPrice(), qty);
+                    }
+                    if (qty == 0) {
+                        break;
+                    }
+                    fill(taker, maker, qty, result, ctx);
                     taker.setQuoteAmount(taker.getQuoteAmount() - spent); // 扣减市价买单预算
                     if (maker.getRemaining() == 0) {
                         book.remove(maker);
@@ -180,7 +207,7 @@ public class MatchingEngine {
                         break; // 价格不可穿透
                     }
                     long qty = Math.min(taker.getRemaining(), maker.getRemaining());
-                    fill(taker, maker, qty, result);
+                    fill(taker, maker, qty, result, ctx);
                     if (maker.getRemaining() == 0) {
                         book.remove(maker);
                     }
@@ -193,7 +220,7 @@ public class MatchingEngine {
                         break;
                     }
                     long qty = Math.min(taker.getRemaining(), maker.getRemaining());
-                    fill(taker, maker, qty, result);
+                    fill(taker, maker, qty, result, ctx);
                     if (maker.getRemaining() == 0) {
                         book.remove(maker);
                     }
@@ -220,10 +247,11 @@ public class MatchingEngine {
 
     /**
      * 单笔撮合：按挂单价成交，更新双方 remaining/filled/avg/trade_count，生成 Trade。
+     * 成交名义额用 {@link PrecisionContext#quoteAmount} 精确换算（计价币最小单位，溢出安全）。
      */
-    private void fill(Order taker, Order maker, long qty, MatchResult result) {
+    private void fill(Order taker, Order maker, long qty, MatchResult result, PrecisionContext ctx) {
         long price = maker.getPrice(); // 成交价 = 挂单（maker）挂单价
-        long quoteAmount = price * qty;
+        long quoteAmount = ctx.quoteAmount(price, qty);
 
         // 挂单方（maker）
         maker.setRemaining(maker.getRemaining() - qty);

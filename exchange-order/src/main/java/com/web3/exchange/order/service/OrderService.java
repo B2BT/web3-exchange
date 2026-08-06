@@ -16,6 +16,7 @@ import com.web3.exchange.order.feign.AssetClient;
 import com.web3.exchange.order.mapper.OrderMapper;
 import com.web3.exchange.order.mapper.TradeMapper;
 import com.web3.exchange.order.mq.TradeProducer;
+import com.web3.exchange.order.util.QuoteCalculator.PrecisionContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -37,6 +38,7 @@ import java.util.List;
 public class OrderService {
 
     private final SymbolService symbolService;
+    private final OrderCoinService coinService;
     private final OrderMapper orderMapper;
     private final TradeMapper tradeMapper;
     private final MatchingEngine matchingEngine;
@@ -45,6 +47,7 @@ public class OrderService {
     private final TransactionTemplate transactionTemplate;
 
     public OrderService(SymbolService symbolService,
+                        OrderCoinService coinService,
                         OrderMapper orderMapper,
                         TradeMapper tradeMapper,
                         MatchingEngine matchingEngine,
@@ -52,6 +55,7 @@ public class OrderService {
                         AssetClient assetClient,
                         TransactionTemplate transactionTemplate) {
         this.symbolService = symbolService;
+        this.coinService = coinService;
         this.orderMapper = orderMapper;
         this.tradeMapper = tradeMapper;
         this.matchingEngine = matchingEngine;
@@ -76,8 +80,12 @@ public class OrderService {
      */
     public PlaceOrderResult placeOrder(PlaceOrderRequest req) {
         Symbol sym = symbolService.requireActive(req.getSymbol());
-        validate(req, sym);
-        Order order = buildOrder(req, sym);
+        // 精度上下文：价格/数量精度取自 t_symbol，计价币 decimals 取自 t_coin（USDT=6）
+        PrecisionContext ctx = new PrecisionContext(
+                nz(sym.getPricePrecision()), nz(sym.getAmountPrecision()),
+                coinService.requireDecimals(sym.getQuoteCoin()));
+        validate(req, sym, ctx);
+        Order order = buildOrder(req, sym, ctx);
 
         // 事务：落库 + 冻结 + 撮合 + 落成交/更新双方订单
         MatchingEngine.MatchResult match = transactionTemplate.execute(status -> {
@@ -89,8 +97,8 @@ public class OrderService {
                 orderMapper.updateById(order);
                 return null;
             }
-            // 撮合（交易对锁串行化）
-            MatchingEngine.MatchResult mr = matchingEngine.match(order);
+            // 撮合（交易对锁串行化）；撮合与冻结共用同一精度上下文，保证名义额算法一致
+            MatchingEngine.MatchResult mr = matchingEngine.match(order, ctx);
             // 落成交
             for (Trade t : mr.trades) {
                 tradeMapper.insert(t);
@@ -166,7 +174,7 @@ public class OrderService {
 
     // ---------- 下单校验 ----------
 
-    private void validate(PlaceOrderRequest req, Symbol sym) {
+    private void validate(PlaceOrderRequest req, Symbol sym, PrecisionContext ctx) {
         if (req.getSide() == null || (req.getSide() != OrderConstant.SIDE_BUY && req.getSide() != OrderConstant.SIDE_SELL)) {
             throw new ServiceException("无效方向 side");
         }
@@ -191,7 +199,7 @@ public class OrderService {
             if (sym.getMaxAmount() != null && req.getQuantity() > sym.getMaxAmount()) {
                 throw new ServiceException("下单数量超过单笔最大下单量 " + sym.getMaxAmount());
             }
-            long notional = req.getPrice() * req.getQuantity();
+            long notional = ctx.quoteAmount(req.getPrice(), req.getQuantity());
             if (sym.getMinNotional() != null && notional < sym.getMinNotional()) {
                 throw new ServiceException("下单名义值小于最小名义值 " + sym.getMinNotional());
             }
@@ -209,8 +217,8 @@ public class OrderService {
         }
     }
 
-    /** 组装订单实体并计算冻结额。 */
-    private Order buildOrder(PlaceOrderRequest req, Symbol sym) {
+    /** 组装订单实体并计算冻结额（名义额用精度上下文精确换算，计价币最小单位）。 */
+    private Order buildOrder(PlaceOrderRequest req, Symbol sym, PrecisionContext ctx) {
         Order o = new Order();
         o.setOrderNo(IdWorker.getIdStr());
         o.setClientOid(req.getClientOid());
@@ -231,7 +239,7 @@ public class OrderService {
         o.setStatus(OrderConstant.STATUS_NEW);
 
         if (req.getOrderType() == OrderConstant.TYPE_MARKET && req.getSide() == OrderConstant.SIDE_BUY) {
-            // 市价买单：只冻结计价币预算，quantity=0
+            // 市价买单：只冻结计价币预算，quantity=0（预算即计价币最小单位，无需换算）
             o.setQuantity(0L);
             o.setRemaining(0L);
             o.setFreezeQuoteAmount(req.getQuoteAmount());
@@ -241,7 +249,8 @@ public class OrderService {
             o.setQuantity(req.getQuantity());
             o.setRemaining(req.getQuantity());
             if (req.getSide() == OrderConstant.SIDE_BUY) {
-                o.setFreezeQuoteAmount(req.getPrice() * req.getQuantity());
+                // 限价买单冻结额 = 精确换算的 price×quantity（计价币最小单位，溢出安全）
+                o.setFreezeQuoteAmount(ctx.quoteAmount(req.getPrice(), req.getQuantity()));
                 o.setFreezeBaseAmount(0L);
             } else {
                 o.setFreezeQuoteAmount(0L);
@@ -280,6 +289,11 @@ public class OrderService {
     }
 
     // ---------- 视图转换 ----------
+
+    /** null → 0（精度字段兜底）。 */
+    private static int nz(Integer v) {
+        return v == null ? 0 : v;
+    }
 
     private OrderVO toVO(Order o) {
         OrderVO v = new OrderVO();
