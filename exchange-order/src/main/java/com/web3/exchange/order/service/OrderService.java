@@ -15,6 +15,7 @@ import com.web3.exchange.order.entity.Trade;
 import com.web3.exchange.order.feign.AssetClient;
 import com.web3.exchange.order.mapper.OrderMapper;
 import com.web3.exchange.order.mapper.TradeMapper;
+import com.web3.exchange.order.mq.TradeProducer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -39,7 +40,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final TradeMapper tradeMapper;
     private final MatchingEngine matchingEngine;
-    private final TradeService tradeService;
+    private final TradeProducer tradeProducer;
     private final AssetClient assetClient;
     private final TransactionTemplate transactionTemplate;
 
@@ -47,14 +48,14 @@ public class OrderService {
                         OrderMapper orderMapper,
                         TradeMapper tradeMapper,
                         MatchingEngine matchingEngine,
-                        TradeService tradeService,
+                        TradeProducer tradeProducer,
                         AssetClient assetClient,
                         TransactionTemplate transactionTemplate) {
         this.symbolService = symbolService;
         this.orderMapper = orderMapper;
         this.tradeMapper = tradeMapper;
         this.matchingEngine = matchingEngine;
-        this.tradeService = tradeService;
+        this.tradeProducer = tradeProducer;
         this.assetClient = assetClient;
         this.transactionTemplate = transactionTemplate;
     }
@@ -109,10 +110,27 @@ public class OrderService {
             return new PlaceOrderResult(toVO(order), List.of());
         }
 
-        // 事务已提交：逐笔过户（Q + B），失败仅置 settle_status=2
+        // 事务已提交：逐笔发 ORDER-TRADE 事务消息驱动 asset 过户（订单本地落库与消息可达原子一致）
+        // 事务消息 executeLocalTransaction 按 tradeNo 查库（已提交→COMMIT）保证「本地成交先于消息被消费」。
         List<TradeVO> tradeVOs = new ArrayList<>();
         for (Trade t : match.trades) {
-            tradeService.settle(t);
+            boolean dispatched = false;
+            try {
+                org.apache.rocketmq.client.producer.TransactionSendResult r = tradeProducer.sendTradeSettle(t);
+                dispatched = r != null
+                        && r.getLocalTransactionState() == org.apache.rocketmq.client.producer.LocalTransactionState.COMMIT_MESSAGE;
+                if (!dispatched) {
+                    log.warn("[order] 成交{}事务消息未提交, 置 settle_status=2 待补偿", t.getTradeNo());
+                }
+            } catch (Exception e) {
+                log.error("[order] 成交{}发送 ORDER-TRADE 事务消息异常, 置 settle_status=2 待补偿: {}",
+                        t.getTradeNo(), e.getMessage(), e);
+            }
+            if (!dispatched) {
+                // MQ 发送失败兜底：置 settle_status=2，由补偿任务直接 Feign 过户（requestId 幂等，不重复扣账）
+                t.setSettleStatus(2);
+                tradeMapper.updateById(t);
+            }
             tradeVOs.add(toTradeVO(t));
         }
         log.info("[order] 下单{}完成 status={} remaining={} 成交{}笔",

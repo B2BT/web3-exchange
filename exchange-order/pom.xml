@@ -95,6 +95,13 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
 
+        <!-- =============== 消息中间件（RocketMQ 事务消息生产者） =============== -->
+        <!-- 版本由父 pom dependencyManagement 统一管理（${rocketmq.spring.version}=2.3.1 + client 5.3.0 覆盖） -->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+        </dependency>
+
         <!-- =============== 测试 =============== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

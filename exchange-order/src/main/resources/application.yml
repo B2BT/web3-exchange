@@ -66,6 +66,13 @@ feign:
         connect-timeout: 5000
         read-timeout: 10000
 
+# =============== RocketMQ（ORDER-TRADE 事务消息生产者，批次C2） ===============
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: order-producer-group
+    send-message-timeout: 3000   # 发消息超时(ms)
+
 # 最简SpringDoc配置
 springdoc:
   api-docs:
