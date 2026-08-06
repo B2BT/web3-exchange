@@ -166,6 +166,13 @@
                 <scope>runtime</scope>
             </dependency>
 
+            <!-- =============== web3j 链上交互（版本复用上方 web3j.version=4.10.3） =============== -->
+            <dependency>
+                <groupId>org.web3j</groupId>
+                <artifactId>core</artifactId>
+                <version>${web3j.version}</version>
+            </dependency>
+
 
         </dependencies>
     </dependencyManagement>
