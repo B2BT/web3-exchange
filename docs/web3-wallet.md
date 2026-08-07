@@ -6,7 +6,7 @@
 
 ## 一、目标功能
 - **托管钱包（Custodial）**：交易所为每用户生成独立链地址（BIP44），充值自动扫链入账、提现签名出账。✅ M1 已落地 BIP44 每用户地址自动派生 + 前端充值二维码；充值/提现扫链入账与签名广播沿用 chain 域既有实现。
-- **自托管钱包（Self-Custodial）**：用户创建/导入助记词(HD)或私钥，导出到 Keystore/QR，可查链上余额、转账（SignMessage/交易签名），接 DApp（可选 WalletConnect）。✅ M2 已落地创建/导入/地址/链上余额 + 前端 Web3 钱包页（转账 M3）。
+- **自托管钱包（Self-Custodial）**：用户创建/导入助记词(HD)或私钥，导出到 Keystore/QR，可查链上余额、转账（SignMessage/交易签名），接 DApp（可选 WalletConnect）。✅ M2 已落地创建/导入/地址/链上余额 + 前端 Web3 钱包页；✅ M3 已落地自托管转账（离线签名广播）+ 链上资产看板。
 - **链上资产看板**：绑定地址后展示 BTC/ETH/ERC-20/USDT 链上余额。
 
 ## 二、后端设计（扩展 exchange-chain 域）
@@ -56,7 +56,14 @@
     余额查询走 chainRegistry Web3j（原生币 eth_getBalance / ERC-20 eth_call balanceOf）。
   - 前端：新增 `/wallet` 路由 + Web3 钱包页（钱包列表、创建返回助记词备份+二维码、导入助记词/私钥二选一、查链上余额）。
   - 测试：新增 8 个 chain.wallet 用例，31 全 PASS（`docs/test-reports/report-20260807_104006.md`）。
-- **M3**：自托管转账（签名广播）+ 链上资产看板。
+- **M3** ✅（已落地 2026-08-07）：自托管转账（签名广播）+ 链上资产看板。
+  - 后端：`UserWalletService.send` 解密钱包私钥（AES-GCM）→ Credentials → 组装交易（原生 ETH/ERC-20 USDT，
+    nonce/gas/chainId）→ 离线签名 → `eth_sendRawTransaction` 广播；校验目标地址 0x+40hex、金额>0、币种存在且链匹配。
+    接口 `POST /api/chain/wallet/{id}/send`。
+  - 前端：Web3 钱包页加「链上资产看板」（按币种聚合所有钱包余额）+ 转账对话框（ETH/USDT 离线签名广播）。
+  - ⚠️ 修复雪花 id JS 精度丢失：`WalletVO.id`/`WalletSendResultVO.walletId` 序列化为 String（否则前端查余额/转账
+    用被 JS 舍入的假 id 报 400）。
+  - 测试：新增 3 个转账用例，34 全 PASS（`docs/test-reports/report-20260807_105509.md`）。
 - **M4**：全量测试 + 报告 + 演示。
 
 ## 六、后续（Phase 2 其余）
