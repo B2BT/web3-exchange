@@ -6,7 +6,7 @@
 
 ## 一、目标功能
 - **托管钱包（Custodial）**：交易所为每用户生成独立链地址（BIP44），充值自动扫链入账、提现签名出账。✅ M1 已落地 BIP44 每用户地址自动派生 + 前端充值二维码；充值/提现扫链入账与签名广播沿用 chain 域既有实现。
-- **自托管钱包（Self-Custodial）**：用户创建/导入助记词(HD)或私钥，导出到 Keystore/QR，可查链上余额、转账（SignMessage/交易签名），接 DApp（可选 WalletConnect）。
+- **自托管钱包（Self-Custodial）**：用户创建/导入助记词(HD)或私钥，导出到 Keystore/QR，可查链上余额、转账（SignMessage/交易签名），接 DApp（可选 WalletConnect）。✅ M2 已落地创建/导入/地址/链上余额 + 前端 Web3 钱包页（转账 M3）。
 - **链上资产看板**：绑定地址后展示 BTC/ETH/ERC-20/USDT 链上余额。
 
 ## 二、后端设计（扩展 exchange-chain 域）
@@ -48,7 +48,14 @@
     `GET /api/chain/deposit/address` 无则自动生成。提现签名广播（冻结→离线签名→RPC 广播→签名自检→回执确认→扣减/回滚）核验通过。
   - 前端：资产页充值 tab 自动派生地址 + 二维码（qrcode 库）展示。
   - 测试：`scripts/api_test.py` 新增 6 用例，23 全 PASS（`docs/test-reports/report-20260807_100927.md`）。
-- **M2**：自托管钱包创建/导入/地址/余额 → 前端 Web3 钱包页。
+- **M2** ✅（已落地 2026-08-07）：自托管钱包创建/导入/地址/余额 → 前端 Web3 钱包页。
+  - 后端：新增表 `t_user_wallet`（sql/wallet.sql）+ `UserWallet` 实体/Mapper；`AesGcmCrypto`
+    （PBKDF2+AES-GCM）加密私钥/助记词入库、明文不落库；`Bip44Utils` 从用户助记词/私钥派生
+    BIP44 首地址（区别于配置主助记词的 HdWalletService）；`UserWalletService.create/import/list/address/balance`；
+    接口 `POST /api/chain/wallet/create|import` + `GET /list|/{id}/address|/{id}/balance`（需登录）。
+    余额查询走 chainRegistry Web3j（原生币 eth_getBalance / ERC-20 eth_call balanceOf）。
+  - 前端：新增 `/wallet` 路由 + Web3 钱包页（钱包列表、创建返回助记词备份+二维码、导入助记词/私钥二选一、查链上余额）。
+  - 测试：新增 8 个 chain.wallet 用例，31 全 PASS（`docs/test-reports/report-20260807_104006.md`）。
 - **M3**：自托管转账（签名广播）+ 链上资产看板。
 - **M4**：全量测试 + 报告 + 演示。
 
