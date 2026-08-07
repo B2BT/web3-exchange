@@ -52,6 +52,25 @@ public class MarketAggregator {
     }
 
     /**
+     * 注入一笔外部行情成交（真实市场数据源，如 CoinGecko）。
+     * <p>复用 onTradeAt 的 OHLCV 聚合：生成/更新 K线与 ticker，使真实价格进入行情展示。
+     * 外部 source 用固定前缀单号，与内部撮合成交单号不冲突。</p>
+     *
+     * @param symbol   交易对（如 BTC/USDT）
+     * @param price    价格（计价币最小单位 Long）
+     * @param quantity 数量（基础币最小单位，可为 1）
+     */
+    public void applyExternalTrade(String symbol, long price, long quantity) {
+        TradeSettleDTO dto = new TradeSettleDTO();
+        dto.setTradeNo("EXT-" + System.currentTimeMillis() + "-" + symbol.hashCode());
+        dto.setSymbol(symbol);
+        dto.setPrice(price);
+        dto.setQuantity(quantity);
+        dto.setQuoteAmount(price * quantity);
+        onTrade(dto);
+    }
+
+    /**
      * 在指定时刻聚合一笔成交（供测试注入精确时间戳做跨窗口/同窗口断言）。
      */
     void onTradeAt(TradeSettleDTO dto, long nowMs) {

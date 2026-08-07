@@ -93,6 +93,12 @@ market:
     # 已关闭窗口批量落库到 t_kline 的周期(毫秒)
     interval-ms: 5000
 
+# =============== 外部真实行情(CoinGecko)配置 ===============
+server-settings:
+  external-price:
+    quote-decimals: 8      # 价格最小单位位数
+    quantity: 100000000    # 注入成交的基础币数量(最小单位, 1e8=1)
+
 logging:
   level:
     com.web3.exchange.market: debug
