@@ -44,7 +44,8 @@ public class HdWalletServiceImpl implements HdWalletService {
                 index                                    // address index
         };
         Bip32ECKeyPair child = Bip32ECKeyPair.deriveKeyPair(master, path);
-        return Keys.getAddress(child); // 返回 0x + 40 hex 小写（EVM）
+        // Keys.getAddress 返回无 0x 的 40 hex 小写；补 0x 前缀与充值扫描匹配(tx.to 带 0x)一致
+        return "0x" + Keys.getAddress(child);
     }
 
     /** BIP44 标准 coinType：BTC=0 / ETH/BSC/POLYGON=60 / TRON=195。 */

@@ -47,7 +47,8 @@ public class ChainController {
         vo.setId(addr.getId());
         vo.setUserId(addr.getUserId());
         vo.setChainCode(addr.getChainCode());
-        vo.setSymbol(addr.getSymbol());
+        // 每链一地址，VO 的 symbol 以请求的为准（避免同链 ETH/USDT 共用时展示错位）
+        vo.setSymbol(symbol);
         vo.setAddress(addr.getAddress());
         vo.setMemo(addr.getMemo());
         vo.setAddressType(addr.getAddressType());
