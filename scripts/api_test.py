@@ -164,6 +164,17 @@ def main():
     wb = curl("GET", BASE + "/api/chain/wallet/%s/balance?userId=%s" % (wid_new, uid), token=tok)
     check("chain.wallet", "链上余额查询", wb.get("code") == 200 and len(wb.get("data") or []) > 0, wb.get("message"))
 
+    # 转账 (M3)：用导入的私钥钱包签名广播
+    wsend = curl("POST", BASE + "/api/chain/wallet/%s/send?userId=%s" % (wid_new, uid),
+                 {"userId": uid, "symbol": "ETH",
+                  "toAddress": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+                  "amount": 10000000000000000}, token=tok)
+    wsd = wsend.get("data") or {}
+    check("chain.wallet", "转账广播返回txHash", wsend.get("code") == 200 and bool(wsd.get("txHash")), wsend.get("message"))
+    check("chain.wallet", "转账from=钱包地址", (wsd.get("fromAddress") or "").lower() == (wikd.get("address") or "").lower(), wsd.get("fromAddress"))
+    check("chain.wallet", "转账校验非法地址", curl("POST", BASE + "/api/chain/wallet/%s/send?userId=%s" % (wid_new, uid),
+         {"userId": uid, "symbol": "ETH", "toAddress": "0x123", "amount": 1000}, token=tok).get("code") != 200, "")
+
     # 监控/网关
     print("\n[监控 monitor]")
     h = curl("GET", BASE + "/api/market/ticker/list")  # 公开行情→网关可达性
