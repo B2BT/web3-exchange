@@ -75,6 +75,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admin/symbols/AdminSymbols.vue'),
         meta: { title: '交易对管理', admin: true },
       },
+      {
+        path: 'tickets',
+        name: 'AdminTickets',
+        component: () => import('@/views/admin/tickets/AdminTickets.vue'),
+        meta: { title: '工单管理', admin: true },
+      },
     ],
   },
   {
@@ -147,6 +153,12 @@ const routes: RouteRecordRaw[] = [
         name: 'ApiKeys',
         component: () => import('@/views/user/ApiKeys.vue'),
         meta: { title: 'API密钥' },
+      },
+      {
+        path: 'ticket',
+        name: 'Ticket',
+        component: () => import('@/views/ticket/Ticket.vue'),
+        meta: { title: '客服工单' },
       },
     ],
   },

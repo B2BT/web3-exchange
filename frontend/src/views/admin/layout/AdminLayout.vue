@@ -18,6 +18,7 @@ const menus = [
   { path: '/admin/health', title: '服务监控', icon: 'Monitor' },
   { path: '/admin/audit', title: '审计日志', icon: 'Document' },
   { path: '/admin/symbols', title: '交易对管理', icon: 'Coin' },
+  { path: '/admin/tickets', title: '工单管理', icon: 'ChatDotRound' },
 ]
 
 const activeMenu = computed(() => {

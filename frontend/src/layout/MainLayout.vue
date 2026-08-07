@@ -23,6 +23,7 @@ const menus = [
   { path: '/notify', title: '通知' },
   { path: '/risk', title: '安全' },
   { path: '/api-keys', title: 'API密钥' },
+  { path: '/ticket', title: '客服' },
   { path: '/user', title: '用户中心' },
 ]
 
