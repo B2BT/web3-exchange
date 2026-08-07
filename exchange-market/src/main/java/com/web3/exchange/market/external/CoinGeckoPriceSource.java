@@ -2,6 +2,7 @@ package com.web3.exchange.market.external;
 
 import com.web3.exchange.market.external.dto.CoinGeckoMarket;
 import com.web3.exchange.market.market.MarketAggregator;
+import com.web3.exchange.market.market.model.Ticker;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +30,16 @@ public class CoinGeckoPriceSource {
     private static final String URL =
             "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=%s&per_page=10&page=1";
 
-    /** 交易对 → CoinGecko 币 id */
+    /** 交易对 → CoinGecko 币 id（主流币，一次请求批量拉取） */
     private static final Map<String, String> SYMBOL_TO_ID = new HashMap<>() {{
         put("BTC/USDT", "bitcoin");
         put("ETH/USDT", "ethereum");
+        put("BNB/USDT", "binancecoin");
+        put("XRP/USDT", "ripple");
+        put("SOL/USDT", "solana");
+        put("ADA/USDT", "cardano");
+        put("DOGE/USDT", "dogecoin");
+        put("USDT/USDT", "tether");
     }};
 
     private final MarketAggregator aggregator;
@@ -68,6 +75,8 @@ public class CoinGeckoPriceSource {
                 long priceMin = toMinUnit(m.getCurrentPrice());
                 // 注入外部成交，更新该交易对 K线/ticker
                 aggregator.applyExternalTrade(symbol, priceMin, quantity);
+                // 覆盖权威 24h ticker（真实 high/low/volume/change）
+                aggregator.updateExternalTicker(buildTicker(symbol, m));
                 updated++;
             }
         } catch (Exception e) {
@@ -80,5 +89,25 @@ public class CoinGeckoPriceSource {
     private long toMinUnit(double price) {
         double factor = Math.pow(10, quoteDecimals);
         return (long) Math.round(price * factor);
+    }
+
+    /** 用 CoinGecko 真实 24h 数据构建权威 ticker 快照。 */
+    private Ticker buildTicker(String symbol, CoinGeckoMarket m) {
+        Ticker t = new Ticker();
+        t.setSymbol(symbol);
+        long last = toMinUnit(m.getCurrentPrice());
+        t.setLastPrice(last);
+        // 涨跌幅：CoinGecko 返回百分比，转基点(10000=100%)
+        double chg = m.getPriceChangePercentage24h() == null ? 0 : m.getPriceChangePercentage24h();
+        t.setChange24h((long) Math.round(chg * 100));
+        // 24h 最高/最低/量（真实值）
+        t.setHigh24h(m.getHigh24h() == null ? last : toMinUnit(m.getHigh24h()));
+        t.setLow24h(m.getLow24h() == null ? last : toMinUnit(m.getLow24h()));
+        // 24h 成交额(法币)作为 quoteVolume；volume 无直接值，按现价反推近似
+        double qv = m.getTotalVolume() == null ? 0 : m.getTotalVolume();
+        t.setQuoteVolume24h((long) Math.round(qv * Math.pow(10, quoteDecimals)));
+        long approxVol = last > 0 ? (long) Math.round(qv / m.getCurrentPrice()) : 0;
+        t.setVolume24h(approxVol);
+        return t;
     }
 }

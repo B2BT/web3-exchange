@@ -12,6 +12,12 @@ export const PRICE_DECIMALS = 8
 export const DEFAULT_SYMBOLS: { symbol: string; base: string; quote: string }[] = [
   { symbol: 'BTC/USDT', base: 'BTC', quote: 'USDT' },
   { symbol: 'ETH/USDT', base: 'ETH', quote: 'USDT' },
+  { symbol: 'BNB/USDT', base: 'BNB', quote: 'USDT' },
+  { symbol: 'XRP/USDT', base: 'XRP', quote: 'USDT' },
+  { symbol: 'SOL/USDT', base: 'SOL', quote: 'USDT' },
+  { symbol: 'ADA/USDT', base: 'ADA', quote: 'USDT' },
+  { symbol: 'DOGE/USDT', base: 'DOGE', quote: 'USDT' },
+  { symbol: 'USDT/USDT', base: 'USDT', quote: 'USDT' },
 ]
 
 /** K线周期切换 */

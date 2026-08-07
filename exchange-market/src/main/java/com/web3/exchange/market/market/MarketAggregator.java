@@ -131,10 +131,26 @@ public class MarketAggregator {
         return list;
     }
 
+    /** symbol -> 权威 24h ticker 快照（外部真实行情覆盖，优先级高于 K线推导） */
+    private final ConcurrentHashMap<String, Ticker> externalTickers = new ConcurrentHashMap<>();
+
     /**
-     * 单交易对 ticker——由 D1 K线派生（当日 D1 窗口 + 前 1 个 D1 窗口，近似 24h，docs 方案一）。
+     * 注入权威 24h ticker 快照（来自真实行情源，如 CoinGecko 的 high/low/volume/change）。
+     * <p>若存在则 getTicker 直接返回该快照（K线推导仅作兜底），保证 24h 指标准确。</p>
+     */
+    public void updateExternalTicker(Ticker t) {
+        if (t == null || t.getSymbol() == null) return;
+        externalTickers.put(t.getSymbol(), t);
+    }
+
+    /**
+     * 单交易对 ticker——优先返回外部真实行情快照；否则由 D1 K线派生（内部模拟成交兜底）。
      */
     public Ticker getTicker(String symbol) {
+        Ticker ext = externalTickers.get(symbol);
+        if (ext != null) {
+            return ext;
+        }
         List<Kline> d1 = getKlines(symbol, "1d", 100);
         if (d1.isEmpty()) {
             return null;
