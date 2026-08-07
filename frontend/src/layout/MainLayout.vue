@@ -69,7 +69,7 @@ async function handleLogout() {
         >
           <el-icon :size="20"><Menu /></el-icon>
         </el-button>
-        <div class="logo" @click="router.push('/market')">Web3 交易所</div>
+        <div class="logo" @click="router.push('/market')">{{ t('login.title') }}</div>
         <el-menu
           mode="horizontal"
           :default-active="activeMenu"
@@ -130,7 +130,7 @@ async function handleLogout() {
       class="mobile-drawer"
     >
       <div class="drawer-brand">
-        <div class="logo" @click="router.push('/market'); drawerVisible = false">Web3 交易所</div>
+        <div class="logo" @click="router.push('/market'); drawerVisible = false">{{ t('login.title') }}</div>
       </div>
       <el-menu
         :default-active="activeMenu"

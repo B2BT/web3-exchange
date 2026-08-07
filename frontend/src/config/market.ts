@@ -16,11 +16,11 @@ export const DEFAULT_SYMBOLS: { symbol: string; base: string; quote: string }[] 
 
 /** K线周期切换 */
 export const PERIODS: { value: string; label: string }[] = [
-  { value: '1m', label: '1分' },
-  { value: '5m', label: '5分' },
-  { value: '15m', label: '15分' },
-  { value: '1h', label: '1时' },
-  { value: '1d', label: '1天' },
+  { value: '1m', label: '1m' },
+  { value: '5m', label: '5m' },
+  { value: '15m', label: '15m' },
+  { value: '1h', label: '1h' },
+  { value: '1d', label: '1d' },
 ]
 
 export function coinDecimals(coin: string): number {
