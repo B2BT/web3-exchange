@@ -82,6 +82,7 @@ async function handleLogout() {
         </el-dropdown>
       </div>
     </el-header>
+    <div class="grad-line header-grad-line" aria-hidden="true"></div>
 
     <el-main class="layout-main">
       <router-view v-slot="{ Component }">
@@ -164,6 +165,12 @@ async function handleLogout() {
   border-radius: 3px 3px 0 0;
   background: var(--accent-grad);
   box-shadow: var(--glow-purple);
+  animation: neonEdge 2.5s ease-in-out infinite;
+}
+.header-grad-line {
+  position: sticky;
+  top: 60px;
+  z-index: 9;
 }
 .header-right .user-info {
   display: flex;

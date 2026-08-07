@@ -225,7 +225,7 @@ watch(activeTab, (tab) => {
 
 <template>
   <div class="page-container">
-    <el-card shadow="never" class="g-card">
+    <el-card shadow="never" class="g-card scan-wrap">
       <template #header>
         <div class="card-header">
           <span>资产</span>

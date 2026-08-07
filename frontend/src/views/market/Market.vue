@@ -30,6 +30,19 @@ const currentTicker = computed<TickerItem | null>(
   () => tickers.value.find((t) => t.symbol === currentSymbol.value) || null,
 )
 
+/** 最新价闪烁 class（涨绿/跌红，更新时触发） */
+const priceFlash = ref('')
+let flashTimer = 0
+watch(
+  () => currentTicker.value?.lastPrice,
+  (n, o) => {
+    if (n == null || o == null || n === o) return
+    priceFlash.value = Number(n) >= Number(o) ? 'flash-up' : 'flash-down'
+    clearTimeout(flashTimer)
+    flashTimer = window.setTimeout(() => (priceFlash.value = ''), 700)
+  },
+)
+
 async function loadTickers() {
   tickerLoading.value = true
   try {
@@ -121,6 +134,7 @@ watch(period, (n, o) => {
 onBeforeUnmount(() => {
   unsubscribeWs()
   marketWs.close()
+  clearTimeout(flashTimer)
 })
 </script>
 
@@ -184,11 +198,11 @@ onBeforeUnmount(() => {
     </el-card>
 
     <!-- ticker 卡片 -->
-    <el-card shadow="never" class="ticker-card g-card">
+    <el-card shadow="never" class="ticker-card g-card tilt3d">
       <el-row :gutter="16" v-if="currentTicker">
         <el-col :span="6">
           <div class="tick-label">{{ currentSymbol }} 最新价</div>
-          <div class="tick-value" :class="changeClass">
+          <div class="tick-value breathe" :class="[changeClass, priceFlash]">
             {{ formatLong(currentTicker.lastPrice, PRICE_DEC, 6) }}
           </div>
         </el-col>
@@ -223,7 +237,7 @@ onBeforeUnmount(() => {
     </el-card>
 
     <!-- K线图 -->
-    <el-card shadow="never" class="kline-card g-card">
+    <el-card shadow="never" class="kline-card g-card scan-wrap">
       <template #header>
         <div class="kline-header">
           <span class="kline-title">{{ currentSymbol }} 价格走势（{{ period }}）</span>
