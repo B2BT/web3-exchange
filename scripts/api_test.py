@@ -117,8 +117,23 @@ def main():
 
     # 链上
     print("\n[链上 chain]")
-    w = curl("GET", BASE + "/api/chain/deposit/address?userId=%s&chainCode=BTC&symbol=BTC" % uid, token=tok)
-    check("chain", "充值地址", w.get("code") in (200, 404), w.get("message"))
+    w = curl("GET", BASE + "/api/chain/deposit/address?userId=%s&chainCode=ETH&symbol=USDT" % uid, token=tok)
+    wd = w.get("data") or {}
+    check("chain", "充值地址自动生成(BIP44)", w.get("code") == 200 and bool(wd.get("address")), w.get("message"))
+    check("chain", "充值地址0x前缀+40hex", (wd.get("address") or "").startswith("0x") and len((wd.get("address") or "")) == 42, wd.get("address"))
+    w2 = curl("GET", BASE + "/api/chain/deposit/address?userId=%s&chainCode=ETH&symbol=USDT" % uid, token=tok)
+    check("chain", "充值地址幂等(两次一致)", (w2.get("data") or {}).get("address") == wd.get("address"), "mismatch")
+    w3 = curl("GET", BASE + "/api/chain/deposit/address?userId=%s&chainCode=ETH&symbol=ETH" % uid, token=tok)
+    check("chain", "同链复用同一地址", (w3.get("data") or {}).get("address") == wd.get("address"), "mismatch")
+
+    # 提现申请(状态0待审核) —— 验证签名广播链路可用
+    wd_apply = curl("POST", BASE + "/api/chain/withdraw/apply",
+                    {"userId": uid, "symbol": "USDT", "chainCode": "ETH",
+                     "toAddress": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+                     "amount": 1000000}, token=tok)
+    wid = (wd_apply.get("data") or {}).get("id")
+    check("chain", "提现申请落单", wd_apply.get("code") == 200 and (wd_apply.get("data") or {}).get("status") == 0, wd_apply.get("message"))
+    check("chain", "提现requestId前缀", (wd_apply.get("data") or {}).get("requestId", "").startswith("WD:"), wd_apply.get("message"))
 
     # 监控/网关
     print("\n[监控 monitor]")
