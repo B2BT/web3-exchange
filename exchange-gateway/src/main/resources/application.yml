@@ -90,6 +90,11 @@ spring:
           uri: lb://exchange-staking
           predicates:
             - Path=/api/staking/**
+        # risk 服务（风控）：无 context-path，Controller 映射 /api/risk/**
+        - id: risk-service
+          uri: lb://exchange-risk
+          predicates:
+            - Path=/api/risk/**
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market

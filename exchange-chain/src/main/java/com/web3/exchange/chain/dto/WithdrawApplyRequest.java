@@ -34,4 +34,6 @@ public class WithdrawApplyRequest implements Serializable {
     @Positive
     @Schema(description = "提现金额(最小单位)", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long amount;
+    @Schema(description = "反钓鱼码(已设置则须正确,风控校验)")
+    private String antiPhishing;
 }

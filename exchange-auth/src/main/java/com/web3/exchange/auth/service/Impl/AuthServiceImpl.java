@@ -8,6 +8,7 @@ import com.web3.exchange.auth.dto.request.ResetPasswordRequest;
 import com.web3.exchange.auth.dto.response.LoginResponse;
 import com.web3.exchange.auth.dto.response.TokenPair;
 import com.web3.exchange.auth.dto.response.UserInfoResponse;
+import com.web3.exchange.auth.feign.RiskClient;
 import com.web3.exchange.auth.feign.UserServiceClient;
 import com.web3.exchange.auth.security.domain.UserPrincipal;
 import com.web3.exchange.auth.security.jwt.JwtTokenProvider;
@@ -54,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
     private final CaptchaProperties captchaProperties;
     private final PasswordEncoder passwordEncoder;
     private final UserServiceClient userServiceClient;
+    private final RiskClient riskClient;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -106,6 +108,9 @@ public class AuthServiceImpl implements AuthService {
                     userPrincipal.getUsername(),
                     userPrincipal.getRole()
             );
+
+            // 8. 记录登录日志（P2.4 风控：异常登录检测）
+            recordLogin(userPrincipal.getUserId(), userPrincipal.getUsername(), clientIp, userAgent, 0);
 
             return LoginResponse.builder()
                     .accessToken(tokenPair.getAccessToken())
@@ -262,6 +267,23 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ==================== 私有方法 ====================
+
+    /**
+     * 记录登录日志（P2.4 风控异常登录检测）。调用失败不阻塞登录（风控降级）。
+     */
+    private void recordLogin(Long userId, String username, String ip, String ua, int result) {
+        try {
+            RiskClient.LoginRecordRequest req = new RiskClient.LoginRecordRequest();
+            req.userId = userId;
+            req.username = username;
+            req.ip = ip;
+            req.userAgent = ua;
+            req.result = result;
+            riskClient.recordLogin(req);
+        } catch (Exception e) {
+            log.warn("记录登录日志失败(降级) userId={}: {}", userId, e.getMessage());
+        }
+    }
 
     /**
      * 通过 Feign 加载用户详情

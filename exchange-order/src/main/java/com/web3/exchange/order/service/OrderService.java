@@ -17,6 +17,7 @@ import com.web3.exchange.order.entity.Order;
 import com.web3.exchange.order.entity.Symbol;
 import com.web3.exchange.order.entity.Trade;
 import com.web3.exchange.order.feign.AssetClient;
+import com.web3.exchange.order.feign.RiskClient;
 import com.web3.exchange.order.mapper.OrderMapper;
 import com.web3.exchange.order.mapper.TradeMapper;
 import com.web3.exchange.order.mq.TradeProducer;
@@ -48,6 +49,7 @@ public class OrderService {
     private final MatchingEngine matchingEngine;
     private final TradeProducer tradeProducer;
     private final AssetClient assetClient;
+    private final RiskClient riskClient;
     private final TransactionTemplate transactionTemplate;
 
     public OrderService(SymbolService symbolService,
@@ -57,6 +59,7 @@ public class OrderService {
                         MatchingEngine matchingEngine,
                         TradeProducer tradeProducer,
                         AssetClient assetClient,
+                        RiskClient riskClient,
                         TransactionTemplate transactionTemplate) {
         this.symbolService = symbolService;
         this.coinService = coinService;
@@ -65,6 +68,7 @@ public class OrderService {
         this.matchingEngine = matchingEngine;
         this.tradeProducer = tradeProducer;
         this.assetClient = assetClient;
+        this.riskClient = riskClient;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -89,6 +93,14 @@ public class OrderService {
                 nz(sym.getPricePrecision()), nz(sym.getAmountPrecision()),
                 coinService.requireDecimals(sym.getQuoteCoin()));
         validate(req, sym, ctx);
+        // 风控前置校验（P2.4）：滑点/限额拦截超限单，不通过则下单被拒
+        if (!riskPreCheck(req, sym, ctx)) {
+            Order rejected = buildOrder(req, sym, ctx);
+            rejected.setStatus(OrderConstant.STATUS_REJECTED);
+            rejected.setRemark("风控拦截");
+            orderMapper.insert(rejected);
+            return new PlaceOrderResult(toVO(rejected), List.of());
+        }
         Order order = buildOrder(req, sym, ctx);
 
         // 条件单（triggerType>0）：下单即冻结、不入撮合盘口，等待行情触发任务激活（docs/advanced-orders.md §三）
@@ -461,6 +473,41 @@ public class OrderService {
                 }
             }
         }
+    }
+
+    /**
+     * 风控前置校验（P2.4）：调用 exchange-risk 下单风控（滑点/限额）。
+     * <p>盘口最优买卖价取自 MatchingEngine（用于滑点估算）；调用失败按放行处理（风控降级不阻塞交易）。</p>
+     */
+    private boolean riskPreCheck(PlaceOrderRequest req, Symbol sym, PrecisionContext ctx) {
+        try {
+            RiskClient.OrderRiskRequest r = new RiskClient.OrderRiskRequest();
+            r.userId = req.getUserId();
+            r.symbol = req.getSymbol();
+            r.side = req.getSide();
+            r.orderType = req.getOrderType();
+            r.price = req.getPrice();
+            r.quantity = req.getQuantity();
+            r.quoteAmount = req.getQuoteAmount();
+            DepthVO d = matchingEngine.depth(req.getSymbol(), 1);
+            if (d != null) {
+                if (d.getAsks() != null && !d.getAsks().isEmpty()) {
+                    r.bestAsk = d.getAsks().get(0).getPrice();
+                }
+                if (d.getBids() != null && !d.getBids().isEmpty()) {
+                    r.bestBid = d.getBids().get(0).getPrice();
+                }
+            }
+            com.web3.exchange.common.model.Result<RiskClient.OrderRiskResult> res = riskClient.preCheckOrder(r);
+            if (res != null && res.isSuccess() && res.getData() != null && !res.getData().pass) {
+                log.info("[order] 下单{}被风控拦截: {}", req.getSymbol(), res.getData().reason);
+                return false;
+            }
+        } catch (Exception e) {
+            // 风控降级：调用失败不阻塞下单（放行）
+            log.warn("[order] 风控校验异常,降级放行 symbol={}: {}", req.getSymbol(), e.getMessage());
+        }
+        return true;
     }
 
     /** 组装订单实体并计算冻结额（名义额用精度上下文精确换算，计价币最小单位）。 */

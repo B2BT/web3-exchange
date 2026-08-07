@@ -190,6 +190,7 @@
         <module>exchange-admin</module>
         <module>exchange-margin</module>
         <module>exchange-staking</module>
+        <module>exchange-risk</module>
     </modules>
 
 </project>
