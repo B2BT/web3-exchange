@@ -25,6 +25,7 @@ const menus = [
   { path: '/trade', key: 'nav.trade' },
   { path: '/asset', key: 'nav.asset' },
   { path: '/margin', key: 'nav.margin' },
+  { path: '/futures', key: 'nav.futures' },
   { path: '/staking', key: 'nav.staking' },
   { path: '/wallet', key: 'nav.wallet' },
   { path: '/order', key: 'nav.order' },
