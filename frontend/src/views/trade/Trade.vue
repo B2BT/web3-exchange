@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { placeOrder } from '@/api/order'
 import type { PlaceOrderResult } from '@/api/order'
 import { accounts } from '@/api/asset'
@@ -14,6 +15,7 @@ import RecentTrades from '@/components/RecentTrades.vue'
 
 const authStore = useAuthStore()
 
+const { t } = useI18n()
 const symbols = DEFAULT_SYMBOLS
 const currentSymbol = ref('BTC/USDT')
 /** 方向：1=买入 2=卖出 */
@@ -38,11 +40,11 @@ const submitting = ref(false)
 const triggerType = ref<number>(0)
 /** 触发价（人读数值，提交时换算 Long） */
 const triggerPrice = ref('')
-const TRIGGER_OPTIONS = [
-  { label: '无', value: 0 },
-  { label: '止盈', value: 1 },
-  { label: '止损', value: 2 },
-]
+const TRIGGER_OPTIONS = computed(() => [
+  { label: t('trade.none'), value: 0 },
+  { label: t('trade.takeProfit'), value: 1 },
+  { label: t('trade.stopLoss'), value: 2 },
+])
 /** 条件单是否启用 */
 const isConditional = computed(() => triggerType.value > 0)
 
@@ -66,9 +68,9 @@ const lastPriceHuman = computed<number | null>(() =>
 const availableCoinName = computed(() => (isBuy.value ? parts.value.quote : parts.value.base))
 const availableValue = computed(() => (isBuy.value ? availableQuote.value : availableBase.value))
 const availableLabel = computed(() => {
-  if (!balanceLoaded.value) return `可用 ${availableCoinName.value}: --`
+  if (!balanceLoaded.value) return `${t('trade.available')} ${availableCoinName.value}: --`
   const dec = isBuy.value ? quoteDecimals.value : baseDecimals.value
-  return `可用 ${availableCoinName.value}: ${fmtHuman(availableValue.value, dec)}`
+  return `${t('trade.available')} ${availableCoinName.value}: ${fmtHuman(availableValue.value, dec)}`
 })
 
 async function loadTicker() {
@@ -144,7 +146,7 @@ watch(
 
 const buttonType = computed(() => (isBuy.value ? 'success' : 'danger'))
 const buttonText = computed(() =>
-  isBuy.value ? (orderType.value === 1 ? '买入' : '市价买入') : orderType.value === 1 ? '卖出' : '市价卖出',
+  isBuy.value ? (orderType.value === 1 ? t('trade.buy') : t('trade.market') + t('trade.buy')) : orderType.value === 1 ? t('trade.sell') : t('trade.market') + t('trade.sell'),
 )
 
 /* ================= 下单增强 ================= */
@@ -327,11 +329,11 @@ onBeforeUnmount(() => {
       <el-card shadow="never" class="g-card col-order">
         <template #header>
           <div class="trade-title">
-            <span>下单面板</span>
+            <span>{{ t('trade.placeOrder') }}</span>
             <el-select
               v-model="currentSymbol"
               style="width: 150px"
-              placeholder="选择交易对"
+              :placeholder="t('market.selectPair')"
             >
               <el-option v-for="s in symbols" :key="s.symbol" :label="s.symbol" :value="s.symbol" />
             </el-select>
@@ -344,16 +346,16 @@ onBeforeUnmount(() => {
           class="side-tabs"
           @tab-change="switchSide"
         >
-          <el-tab-pane label="买入" name="1" />
-          <el-tab-pane label="卖出" name="2" />
+          <el-tab-pane :label="t('trade.buy')" name="1" />
+          <el-tab-pane :label="t('trade.sell')" name="2" />
         </el-tabs>
 
         <!-- 限价/市价切换 -->
         <el-segmented
           :model-value="String(orderType)"
           :options="[
-            { label: '限价', value: '1' },
-            { label: '市价', value: '2' },
+            { label: t('trade.limit'), value: '1' },
+            { label: t('trade.market'), value: '2' },
           ]"
           @update:model-value="switchType(Number($event))"
           class="type-seg"
@@ -361,7 +363,7 @@ onBeforeUnmount(() => {
 
         <!-- 时间策略 -->
         <div class="tif-row">
-          <span class="ratio-label">时间策略</span>
+          <span class="ratio-label">{{ t('trade.timeInForce') }}</span>
           <el-radio-group v-model="timeInForce" size="small" class="tif-group">
             <el-radio-button
               v-for="o in tifOptions"
@@ -377,7 +379,7 @@ onBeforeUnmount(() => {
         <div class="bal-line">
           <span class="bal-label">{{ availableLabel }}</span>
           <span class="last-price-line">
-            最新价
+            {{ t('trade.latestPrice') }}
             <button type="button" class="lp-val num" @click="fillLatestPrice">
               {{ lastPriceLong != null ? formatLong(lastPriceLong, quoteDecimals, quoteDecimals) : '--' }}
             </button>
@@ -386,24 +388,24 @@ onBeforeUnmount(() => {
 
         <el-form label-position="top" class="order-form">
           <!-- 限价输入 -->
-          <el-form-item v-if="showLimit" :label="`限价 (${parts.quote})`">
-            <el-input v-model="price" placeholder="请输入限价" />
+          <el-form-item v-if="showLimit" :label="`${t('trade.price')} (${parts.quote})`">
+            <el-input v-model="price" :placeholder="t('trade.price')" />
           </el-form-item>
 
           <!-- 数量输入：限价单 & 市价卖单 -->
-          <el-form-item v-if="showQuantity" :label="`数量 (${parts.base})`">
-            <el-input v-model="quantity" placeholder="请输入数量" />
+          <el-form-item v-if="showQuantity" :label="`${t('trade.quantity')} (${parts.base})`">
+            <el-input v-model="quantity" :placeholder="t('trade.quantity')" />
           </el-form-item>
 
           <!-- 市价买单：输入金额 -->
-          <el-form-item v-if="showQuoteAmount" :label="`买入金额 (${parts.quote})`">
-            <el-input v-model="quoteAmount" placeholder="请输入预算金额" />
+          <el-form-item v-if="showQuoteAmount" :label="`${t('trade.buy')} ${t('trade.amount')} (${parts.quote})`">
+            <el-input v-model="quoteAmount" :placeholder="t('trade.amount')" />
           </el-form-item>
 
           <!-- 条件单（仅限价单）：止盈/止损 + 触发价 -->
           <div v-if="showLimit" class="cond-box">
             <div class="cond-head">
-              <span class="cond-title">条件单</span>
+              <span class="cond-title">{{ t('trade.conditional') }}</span>
               <el-radio-group v-model="triggerType" size="small" class="tif-group">
                 <el-radio-button
                   v-for="o in TRIGGER_OPTIONS"
@@ -414,10 +416,10 @@ onBeforeUnmount(() => {
                 </el-radio-button>
               </el-radio-group>
             </div>
-            <el-form-item v-if="isConditional" :label="`触发价 (${parts.quote})`">
+            <el-form-item v-if="isConditional" :label="`${t('trade.triggerPrice')} (${parts.quote})`">
               <el-input
                 v-model="triggerPrice"
-                placeholder="请输入触发价，最新价达到后自动撮合"
+                :placeholder="t('trade.triggerPrice')"
               />
             </el-form-item>
           </div>
@@ -425,7 +427,7 @@ onBeforeUnmount(() => {
 
         <!-- 快捷比例 -->
         <div class="ratio-row">
-          <span class="ratio-label">比例</span>
+          <span class="ratio-label">{{ t('trade.ratio') }}</span>
           <el-button
             v-for="r in RATIOS"
             :key="r"
@@ -440,10 +442,10 @@ onBeforeUnmount(() => {
         <!-- 数量⇄金额联动预估 -->
         <div class="est-line">
           <span v-if="estAmount != null">
-            预估金额 ≈ <b class="num">{{ fmtHuman(estAmount, quoteDecimals) }}</b> {{ parts.quote }}
+            {{ t('trade.estAmount') }} ≈ <b class="num">{{ fmtHuman(estAmount, quoteDecimals) }}</b> {{ parts.quote }}
           </span>
           <span v-if="estQty != null">
-            预估数量 ≈ <b class="num">{{ fmtHuman(estQty, baseDecimals) }}</b> {{ parts.base }}
+            {{ t('trade.estQty') }} ≈ <b class="num">{{ fmtHuman(estQty, baseDecimals) }}</b> {{ parts.base }}
           </span>
         </div>
 

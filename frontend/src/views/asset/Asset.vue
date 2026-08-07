@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { useAuthStore } from '@/stores/auth'
 import * as assetApi from '@/api/asset'
@@ -9,6 +10,8 @@ import type { AccountItem, LedgerItem } from '@/api/asset'
 import type { AssetAddress } from '@/api/chain'
 import { formatLong } from '@/utils/format'
 import { coinDecimals } from '@/config/market'
+
+const { t } = useI18n()
 
 const authStore = useAuthStore()
 
@@ -228,27 +231,27 @@ watch(activeTab, (tab) => {
     <el-card shadow="never" class="g-card scan-wrap">
       <template #header>
         <div class="card-header">
-          <span>资产</span>
-          <el-button size="small" :loading="overviewLoading" @click="loadAccounts">刷新</el-button>
+          <span>{{ t('asset.title') }}</span>
+          <el-button size="small" :loading="overviewLoading" @click="loadAccounts">{{ t('common.refresh') }}</el-button>
         </div>
       </template>
 
       <el-tabs v-model="activeTab">
         <!-- 资产总览 -->
-        <el-tab-pane label="资产总览" name="overview" lazy>
+        <el-tab-pane :label="t('asset.overview')" name="overview" lazy>
           <el-table v-loading="overviewLoading" :data="accounts" stripe>
-            <el-table-column prop="symbol" label="币种" width="140" />
-            <el-table-column label="可用余额">
+            <el-table-column prop="symbol" :label="t('asset.coin')" width="140" />
+            <el-table-column :label="t('asset.available')">
               <template #default="{ row }">
                 <span class="num">{{ formatLong(row.available, coinDecimals(row.symbol)) }} {{ row.symbol }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="冻结余额">
+            <el-table-column :label="t('asset.frozen')">
               <template #default="{ row }">
                 <span class="num">{{ formatLong(row.frozen, coinDecimals(row.symbol)) }} {{ row.symbol }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="总余额">
+            <el-table-column :label="t('asset.total')">
               <template #default="{ row }">
                 <b class="num">{{ formatLong(row.total, coinDecimals(row.symbol)) }}</b> <span class="num">{{ row.symbol }}</span>
               </template>

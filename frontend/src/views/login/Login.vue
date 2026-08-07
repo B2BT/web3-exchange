@@ -2,10 +2,12 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import ThreeOrb from '@/components/effects/ThreeOrb.vue'
 import ParticleBackground from '@/components/effects/ParticleBackground.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
@@ -88,8 +90,8 @@ onMounted(loadCaptcha)
     <ThreeOrb />
     <ParticleBackground />
     <div class="login-card g-card tilt3d neon-edge">
-      <div class="logo floaty">Web3 交易所</div>
-      <div class="subtitle">去中心化数字资产交易平台</div>
+      <div class="logo floaty">{{ t('login.title') }}</div>
+      <div class="subtitle">{{ t('login.subtitle') }}</div>
 
       <el-form
         ref="formRef"
@@ -99,23 +101,23 @@ onMounted(loadCaptcha)
         size="large"
         @keyup.enter="handleLogin"
       >
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" clearable />
+        <el-form-item :label="t('login.username')" prop="username">
+          <el-input v-model="form.username" :placeholder="t('login.username')" clearable />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
+        <el-form-item :label="t('login.password')" prop="password">
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="请输入密码"
+            :placeholder="t('login.password')"
             show-password
           />
         </el-form-item>
-        <el-form-item label="验证码" prop="captcha">
+        <el-form-item :label="t('login.captcha')" prop="captcha">
           <div class="captcha-row">
-            <el-input v-model="form.captcha" placeholder="请输入验证码" />
+            <el-input v-model="form.captcha" :placeholder="t('login.captcha')" />
             <div
               class="captcha-img"
-              :title="'点击刷新验证码'"
+              :title="t('common.refresh')"
               @click="loadCaptcha"
             >
               <el-image
@@ -123,7 +125,7 @@ onMounted(loadCaptcha)
                 :src="captchaImage"
                 fit="cover"
               />
-              <span v-else class="captcha-text">{{ captchaImage || '加载中' }}</span>
+              <span v-else class="captcha-text">{{ captchaImage || t('common.loading') }}</span>
             </div>
           </div>
         </el-form-item>
@@ -134,12 +136,12 @@ onMounted(loadCaptcha)
           :loading="loading"
           @click="handleLogin"
         >
-          登 录
+          {{ t('login.loginBtn') }}
         </el-button>
       </el-form>
 
       <div class="login-footer">
-        <router-link to="/register">没有账号？立即注册</router-link>
+        <router-link to="/register">{{ t('login.registerLink') }}</router-link>
       </div>
     </div>
   </div>

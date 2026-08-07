@@ -2,8 +2,10 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -81,7 +83,7 @@ async function handleRegister() {
       captchaId: captchaId.value,
       source: 'web',
     })
-    ElMessage.success('注册成功，请登录')
+    ElMessage.success(t('register.success'))
     router.push('/login')
   } catch {
     loadCaptcha()
@@ -97,8 +99,8 @@ onMounted(loadCaptcha)
 <template>
   <div class="register-page">
     <div class="register-card g-card">
-      <div class="logo">Web3 交易所</div>
-      <div class="subtitle">创建新账户</div>
+      <div class="logo">{{ t('login.title') }}</div>
+      <div class="subtitle">{{ t('register.subtitle') }}</div>
 
       <el-form
         ref="formRef"
@@ -107,40 +109,40 @@ onMounted(loadCaptcha)
         label-position="top"
         size="large"
       >
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="字母开头，3-20位" clearable />
+        <el-form-item :label="t('register.username')" prop="username">
+          <el-input v-model="form.username" :placeholder="t('register.usernamePlaceholder')" clearable />
         </el-form-item>
-        <el-form-item label="昵称（可选）" prop="nickname">
-          <el-input v-model="form.nickname" placeholder="请输入昵称" clearable />
+        <el-form-item :label="t('register.nickname')" prop="nickname">
+          <el-input v-model="form.nickname" :placeholder="t('register.nicknamePlaceholder')" clearable />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" placeholder="含大小写字母和数字" show-password />
+        <el-form-item :label="t('register.password')" prop="password">
+          <el-input v-model="form.password" type="password" :placeholder="t('register.passwordPlaceholder')" show-password />
         </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="form.confirmPassword" type="password" placeholder="再次输入密码" show-password />
+        <el-form-item :label="t('register.confirmPassword')" prop="confirmPassword">
+          <el-input v-model="form.confirmPassword" type="password" :placeholder="t('register.confirmPasswordPlaceholder')" show-password />
         </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" placeholder="请输入邮箱" clearable />
+        <el-form-item :label="t('register.email')" prop="email">
+          <el-input v-model="form.email" :placeholder="t('register.emailPlaceholder')" clearable />
         </el-form-item>
-        <el-form-item label="手机号" prop="phone">
-          <el-input v-model="form.phone" placeholder="请输入手机号" clearable />
+        <el-form-item :label="t('register.phone')" prop="phone">
+          <el-input v-model="form.phone" :placeholder="t('register.phonePlaceholder')" clearable />
         </el-form-item>
-        <el-form-item label="验证码" prop="captcha">
+        <el-form-item :label="t('register.captcha')" prop="captcha">
           <div class="captcha-row">
-            <el-input v-model="form.captcha" placeholder="请输入验证码" />
-            <div class="captcha-img" :title="'点击刷新'" @click="loadCaptcha">
+            <el-input v-model="form.captcha" :placeholder="t('register.captchaPlaceholder')" />
+            <div class="captcha-img" :title="t('common.refresh')" @click="loadCaptcha">
               <el-image v-if="captchaIsImage && captchaImage" :src="captchaImage" fit="cover" />
-              <span v-else class="captcha-text">{{ captchaImage || '加载中' }}</span>
+              <span v-else class="captcha-text">{{ captchaImage || t('common.loading') }}</span>
             </div>
           </div>
         </el-form-item>
         <el-button type="primary" size="large" class="reg-btn" :loading="loading" @click="handleRegister">
-          注 册
+          {{ t('register.registerBtn') }}
         </el-button>
       </el-form>
 
       <div class="reg-footer">
-        <router-link to="/login">已有账号？去登录</router-link>
+        <router-link to="/login">{{ t('common.back') }} →</router-link>
       </div>
     </div>
   </div>

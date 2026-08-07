@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import KlineChart from '@/components/KlineChart.vue'
 import DepthChart from '@/components/DepthChart.vue'
 import { tickerList } from '@/api/market'
@@ -7,6 +8,8 @@ import type { KlineItem, TickerItem } from '@/api/market'
 import { marketWs } from '@/api/marketWs'
 import { DEFAULT_SYMBOLS, PERIODS, coinDecimals, symbolParts } from '@/config/market'
 import { formatBpPercent, formatLong } from '@/utils/format'
+
+const { t } = useI18n()
 
 type SymbolOpt = { symbol: string; base: string; quote: string }
 
@@ -144,7 +147,7 @@ onBeforeUnmount(() => {
     <!-- 顶部：交易对选择 + 周期切换 -->
     <el-card shadow="never" class="toolbar-card g-card">
       <div class="toolbar">
-        <el-select v-model="currentSymbol" style="width: 180px" placeholder="选择交易对">
+        <el-select v-model="currentSymbol" style="width: 180px" :placeholder="t('market.selectPair')">
           <el-option
             v-for="s in symbols"
             :key="s.symbol"
@@ -171,7 +174,7 @@ onBeforeUnmount(() => {
           @click="loadTickers"
           style="margin-left: auto"
         >
-          刷新
+          {{ t('common.refresh') }}
         </el-button>
 
         <el-tag
@@ -181,10 +184,10 @@ onBeforeUnmount(() => {
           effect="plain"
           class="ws-tag"
         >
-          WS 实时
+          {{ t('market.wsRealtime') }}
         </el-tag>
         <el-tag v-else type="info" size="small" effect="plain" class="ws-tag">
-          REST 兜底
+          {{ t('market.restFallback') }}
         </el-tag>
       </div>
 
@@ -202,31 +205,31 @@ onBeforeUnmount(() => {
     <el-card shadow="never" class="ticker-card g-card tilt3d">
       <el-row :gutter="16" v-if="currentTicker">
         <el-col :span="6" :xs="24" :sm="6">
-          <div class="tick-label">{{ currentSymbol }} 最新价</div>
+          <div class="tick-label">{{ currentSymbol }} {{ t('market.latestPrice') }}</div>
           <div class="tick-value breathe" :class="[changeClass, priceFlash]">
             {{ formatLong(currentTicker.lastPrice, PRICE_DEC, 6) }}
           </div>
         </el-col>
         <el-col :span="4" :xs="8" :sm="4">
-          <div class="tick-label">24h涨跌</div>
+          <div class="tick-label">{{ t('market.change24h') }}</div>
           <div class="tick-value" :class="changeClass">
             {{ formatBpPercent(currentTicker.change24h) }}
           </div>
         </el-col>
         <el-col :span="4" :xs="8" :sm="4">
-          <div class="tick-label">24h最高</div>
+          <div class="tick-label">{{ t('market.high24h') }}</div>
           <div class="tick-value">{{ formatLong(currentTicker.high24h, PRICE_DEC, 6) }}</div>
         </el-col>
         <el-col :span="4" :xs="8" :sm="4">
-          <div class="tick-label">24h最低</div>
+          <div class="tick-label">{{ t('market.low24h') }}</div>
           <div class="tick-value">{{ formatLong(currentTicker.low24h, PRICE_DEC, 6) }}</div>
         </el-col>
         <el-col :span="3" :xs="12" :sm="3">
-          <div class="tick-label">24h量</div>
+          <div class="tick-label">{{ t('market.volume24h') }}</div>
           <div class="tick-value">{{ formatLong(currentTicker.volume24h, baseDecimals, 6) }}</div>
         </el-col>
         <el-col :span="3" :xs="12" :sm="3">
-          <div class="tick-label">24h额</div>
+          <div class="tick-label">{{ t('market.quoteVolume24h') }}</div>
           <div class="tick-value">{{ formatLong(currentTicker.quoteVolume24h, quoteDecimals, 4) }}</div>
         </el-col>
       </el-row>
@@ -241,7 +244,7 @@ onBeforeUnmount(() => {
     <el-card shadow="never" class="kline-card g-card scan-wrap">
       <template #header>
         <div class="kline-header">
-          <span class="kline-title">{{ currentSymbol }} 价格走势（{{ period }}）</span>
+          <span class="kline-title">{{ currentSymbol }} {{ t('market.priceTrend') }}（{{ period }}）</span>
         </div>
       </template>
       <KlineChart
@@ -257,7 +260,7 @@ onBeforeUnmount(() => {
     <el-card shadow="never" class="depth-card g-card">
       <template #header>
         <div class="kline-header">
-          <span class="kline-title">{{ currentSymbol }} 市场深度</span>
+          <span class="kline-title">{{ currentSymbol }} {{ t('market.marketDepth') }}</span>
         </div>
       </template>
       <DepthChart

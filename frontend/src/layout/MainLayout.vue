@@ -2,29 +2,37 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { saveLocale } from '@/locales'
 
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
 // 移动端抽屉导航开关
 const drawerVisible = ref(false)
+// 语言切换
+function switchLocale(loc: string) {
+  locale.value = loc
+  saveLocale(loc)
+}
 
 // 顶栏导航（占位路由，后续 F2/F3 填充）
 const menus = [
-  { path: '/market', title: '行情' },
-  { path: '/trade', title: '交易' },
-  { path: '/asset', title: '资产' },
-  { path: '/margin', title: '杠杆' },
-  { path: '/staking', title: '理财' },
-  { path: '/wallet', title: 'Web3钱包' },
-  { path: '/order', title: '订单' },
-  { path: '/notify', title: '通知' },
-  { path: '/risk', title: '安全' },
-  { path: '/api-keys', title: 'API密钥' },
-  { path: '/ticket', title: '客服' },
-  { path: '/user', title: '用户中心' },
+  { path: '/market', key: 'nav.market' },
+  { path: '/trade', key: 'nav.trade' },
+  { path: '/asset', key: 'nav.asset' },
+  { path: '/margin', key: 'nav.margin' },
+  { path: '/staking', key: 'nav.staking' },
+  { path: '/wallet', key: 'nav.wallet' },
+  { path: '/order', key: 'nav.order' },
+  { path: '/notify', key: 'nav.notify' },
+  { path: '/risk', key: 'nav.risk' },
+  { path: '/api-keys', key: 'nav.apiKeys' },
+  { path: '/ticket', key: 'nav.ticket' },
+  { path: '/user', key: 'nav.user' },
 ]
 
 const activeMenu = computed(() => {
@@ -70,11 +78,25 @@ async function handleLogout() {
           router
         >
           <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
-            {{ m.title }}
+            {{ t(m.key) }}
           </el-menu-item>
         </el-menu>
       </div>
       <div class="header-right">
+        <!-- 语言切换 -->
+        <el-dropdown @command="switchLocale">
+          <span class="lang-toggle">
+            <el-icon><Global /></el-icon>
+            <span class="lang-label">{{ locale === 'en' ? 'EN' : '中文' }}</span>
+            <el-icon><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="zh">中文</el-dropdown-item>
+              <el-dropdown-item command="en">English</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-dropdown>
           <span class="user-info">
             <span class="avatar-ring">
@@ -117,12 +139,12 @@ async function handleLogout() {
         @select="drawerVisible = false"
       >
         <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
-          {{ m.title }}
+          {{ t(m.key) }}
         </el-menu-item>
       </el-menu>
       <div class="drawer-user">
         <el-button type="danger" plain style="width: 100%" @click="handleLogout">
-          <el-icon style="margin-right: 4px"><SwitchButton /></el-icon>退出登录
+          <el-icon style="margin-right: 4px"><SwitchButton /></el-icon>{{ t('login.logout') }}
         </el-button>
       </div>
     </el-drawer>
@@ -280,6 +302,25 @@ async function handleLogout() {
 }
 .menu-toggle {
   color: var(--text-primary);
+}
+/* 语言切换 */
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.lang-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+.lang-label {
+  font-size: 13px;
+  font-weight: 600;
 }
 @media (min-width: 1024px) {
   .mobile-hidden {
