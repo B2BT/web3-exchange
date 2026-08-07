@@ -90,6 +90,8 @@ def dispatch(method, params):
         return "0x1"
     if method == "eth_getTransactionCount":
         return to_hex(st["nonce"])
+    if method == "eth_getBalance":
+        return "0x0de0b6b3a7640000"  # 1e18 wei (mock 固定余额)
     if method == "eth_gasPrice":
         return "0x3b9aca00"  # 1e9 wei
     if method == "eth_estimateGas":

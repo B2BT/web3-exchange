@@ -85,6 +85,9 @@ chain:
   # HD 钱包（BIP44 每用户充币地址派生；仅 Mock/测试网，生产用 KMS/HSM）
   hd-wallet:
     mnemonic: "test test test test test test test test test test test junk"
+  # 自托管钱包（用户创建/导入钱包的私钥加密；仅 Mock/测试网，生产用 KMS/HSM）
+  self-wallet:
+    encrypt-secret: "mock-self-wallet-encrypt-secret-0123456789"
 
 # 最简SpringDoc配置
 springdoc:

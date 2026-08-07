@@ -23,6 +23,9 @@ public class ChainProperties {
     /** HD 钱包（BIP44 每用户充币地址派生） */
     private HdWallet hdWallet = new HdWallet();
 
+    /** 自托管钱包（用户创建/导入钱包的私钥加密） */
+    private SelfWallet selfWallet = new SelfWallet();
+
     @Data
     public static class Scan {
         /** 是否开启扫描 */
@@ -51,5 +54,11 @@ public class ChainProperties {
         private String mnemonic;
         /** 派生口令（通常为空） */
         private String passphrase = "";
+    }
+
+    @Data
+    public static class SelfWallet {
+        /** 自托管钱包私钥/助记词加密密钥（AES-GCM，PBKDF2 派生；仅 Mock/测试网，生产用 KMS/HSM） */
+        private String encryptSecret;
     }
 }
