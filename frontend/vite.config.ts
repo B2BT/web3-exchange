@@ -12,7 +12,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: '127.0.0.1',
+    // 监听所有网络接口，允许局域网访问（http://<本机IP>:5173）
+    host: '0.0.0.0',
     proxy: {
       // 开发环境：/api -> 网关 8080（避免 CORS）
       '/api': {
