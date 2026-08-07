@@ -135,6 +135,35 @@ def main():
     check("chain", "提现申请落单", wd_apply.get("code") == 200 and (wd_apply.get("data") or {}).get("status") == 0, wd_apply.get("message"))
     check("chain", "提现requestId前缀", (wd_apply.get("data") or {}).get("requestId", "").startswith("WD:"), wd_apply.get("message"))
 
+    # 自托管钱包 (M2)
+    print("\n[自托管钱包 chain.wallet]")
+    wc = curl("POST", BASE + "/api/chain/wallet/create", {"userId": uid, "chainCode": "ETH", "name": "e2e-wallet"}, token=tok)
+    wcd = wc.get("data") or {}
+    check("chain.wallet", "创建HD钱包返回助记词+地址", wc.get("code") == 200 and bool(wcd.get("address")) and bool(wcd.get("mnemonic")), wc.get("message"))
+    check("chain.wallet", "创建地址0x+40hex", (wcd.get("address") or "").startswith("0x") and len((wcd.get("address") or "")) == 42, wcd.get("address"))
+    check("chain.wallet", "创建助记词12词", len((wcd.get("mnemonic") or "").split()) == 12, wcd.get("mnemonic"))
+
+    # 导入同一助记词 → 同地址 → 撞唯一约束(证明派生确定性)
+    wi = curl("POST", BASE + "/api/chain/wallet/import",
+              {"userId": uid, "chainCode": "ETH", "mnemonic": wcd.get("mnemonic")}, token=tok)
+    check("chain.wallet", "重复导入同助记词拒绝(唯一约束)", wi.get("code") != 200, wi.get("message"))
+
+    # 导入私钥 (hardhat #1)
+    wik = curl("POST", BASE + "/api/chain/wallet/import",
+               {"userId": uid, "chainCode": "ETH",
+                "privateKey": "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+                "name": "e2e-pk"}, token=tok)
+    wikd = wik.get("data") or {}
+    check("chain.wallet", "导入私钥派生地址正确", wik.get("code") == 200 and (wikd.get("address") or "").lower() == "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", wikd.get("address"))
+
+    wl = curl("GET", BASE + "/api/chain/wallet/list?userId=%s" % uid, token=tok)
+    check("chain.wallet", "钱包列表", wl.get("code") == 200 and len(wl.get("data") or []) > 0, wl.get("message"))
+    check("chain.wallet", "列表不回传明文助记词", all((w.get("mnemonic") is None) for w in (wl.get("data") or [])), "leak!")
+
+    wid_new = (wl.get("data") or [{}])[0].get("id")
+    wb = curl("GET", BASE + "/api/chain/wallet/%s/balance?userId=%s" % (wid_new, uid), token=tok)
+    check("chain.wallet", "链上余额查询", wb.get("code") == 200 and len(wb.get("data") or []) > 0, wb.get("message"))
+
     # 监控/网关
     print("\n[监控 monitor]")
     h = curl("GET", BASE + "/api/market/ticker/list")  # 公开行情→网关可达性
