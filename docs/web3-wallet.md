@@ -71,7 +71,7 @@
   - 汇总：`docs/test-reports/M4-web3-wallet-summary.md`。
 
 ## 六、后续（Phase 2 其余）
-- **P2.2 杠杆现货**（Margin）：借币/抵押/强制平仓——新杠杆账户 + 利率。
+- **P2.2 杠杆现货**（Margin）：✅ 已落地（2026-08-07）。`exchange-margin` 模块（端口 8110）：杠杆账户/抵押入金出金(asset freeze/unfreeze)/借币/还币(本金+利息)/日利率计息/强制平仓(风险率<维持保证金率)。前端 /margin 页(账户卡片+划转/借币/还币+借币记录)。契约 docs/margin-domain.md，截图 docs/screenshots/margin.png。全链路(开户→入金→借币→计息→还币→出金→强平)实测通过。
 - **P2.3 Staking/Earn**：活期/锁仓质押，年化收益分配。
 - **P2.4 风控引擎**：下单风控(滑点/限额)、提现二次验证/反钓鱼码、异常登录。
 - **P2.5 Admin B**：公告 CRUD、服务监控、管理员审计日志、交易对管理。
