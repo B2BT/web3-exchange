@@ -105,6 +105,11 @@ spring:
           uri: lb://exchange-ticket
           predicates:
             - Path=/api/ticket/**
+        # futures 服务（永续合约）：无 context-path，Controller 映射 /api/futures/**
+        - id: futures-service
+          uri: lb://exchange-futures
+          predicates:
+            - Path=/api/futures/**
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market

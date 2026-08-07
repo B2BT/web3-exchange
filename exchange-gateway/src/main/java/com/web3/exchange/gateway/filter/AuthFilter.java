@@ -50,7 +50,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/auth/reset-password",
             "/actuator/health",
             // 行情公开：ticker/K线(含 ws 实时) 免鉴权——主流交易所行情均公开
-            "/api/market"
+            "/api/market",
+            // 合约公开：合约列表 + 标记价 免鉴权（下单等交易接口在模块内部校验用户身份）
+            "/api/futures"
     );
 
     @Value("${jwt.secret}")
