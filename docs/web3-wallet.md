@@ -64,7 +64,11 @@
   - ⚠️ 修复雪花 id JS 精度丢失：`WalletVO.id`/`WalletSendResultVO.walletId` 序列化为 String（否则前端查余额/转账
     用被 JS 舍入的假 id 报 400）。
   - 测试：新增 3 个转账用例，34 全 PASS（`docs/test-reports/report-20260807_105509.md`）。
-- **M4**：全量测试 + 报告 + 演示。
+- **M4** ✅（已落地 2026-08-07）：全量测试 + 报告 + 演示。
+  - 全量回归：`api_test.py` 39 用例全 PASS（`docs/test-reports/report-20260807_110327.md`），覆盖 auth/market/order/asset/notify/monitor/chain/chain.wallet。
+  - 充值入账 E2E：mock RPC 指向 BIP44 充币地址 → 扫描落单 → 确认达标 → credit 入账，USDT 余额 +1e6（`uk_tx_hash` 幂等双保险验证）。
+  - 前端演示：`docs/screenshots/m1-deposit.png`（充值二维码）、`docs/screenshots/m2-wallet.png`（链上资产看板+钱包列表+转账）。
+  - 汇总：`docs/test-reports/M4-web3-wallet-summary.md`。
 
 ## 六、后续（Phase 2 其余）
 - **P2.2 杠杆现货**（Margin）：借币/抵押/强制平仓——新杠杆账户 + 利率。
