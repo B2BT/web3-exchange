@@ -73,7 +73,7 @@ export interface WithdrawApplyRequest {
   amount: number
 }
 
-/** 查询用户充币地址 */
+/** 查询用户充币地址（后端无则自动生成 BIP44 派生地址） */
 export function depositAddress(
   userId: string | number,
   chainCode: string,

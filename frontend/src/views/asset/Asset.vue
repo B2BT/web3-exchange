@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import QRCode from 'qrcode'
 import { useAuthStore } from '@/stores/auth'
 import * as assetApi from '@/api/asset'
 import * as chainApi from '@/api/chain'
@@ -70,6 +71,7 @@ async function loadAccounts() {
 const dep = reactive({ symbol: 'USDT' as string, chainCode: 'TRON' as string })
 const depAddress = ref<AssetAddress | null>(null)
 const depLoading = ref(false)
+const depQr = ref('') // 二维码 dataURL
 
 async function queryDepositAddress() {
   if (!userId.value) return
@@ -79,8 +81,17 @@ async function queryDepositAddress() {
   }
   depLoading.value = true
   depAddress.value = null
+  depQr.value = ''
   try {
-    depAddress.value = await chainApi.depositAddress(userId.value, dep.chainCode, dep.symbol)
+    const addr = await chainApi.depositAddress(userId.value, dep.chainCode, dep.symbol)
+    depAddress.value = addr
+    if (addr?.address) {
+      try {
+        depQr.value = await QRCode.toDataURL(addr.address, { width: 180, margin: 1 })
+      } catch {
+        depQr.value = ''
+      }
+    }
   } catch {
     depAddress.value = null
   } finally {
@@ -273,7 +284,7 @@ watch(activeTab, (tab) => {
             </el-form-item>
             <el-form-item label="操作">
               <el-button type="primary" :loading="depLoading" @click="queryDepositAddress">
-                查询充值地址
+                {{ depAddress ? '刷新充值地址' : '生成充值地址' }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -282,21 +293,29 @@ watch(activeTab, (tab) => {
             v-if="!depAddress && !depLoading"
             type="info"
             :closable="false"
-            title="充值地址由运营按用户+链+币种预配置；如未配置将提示「未绑定充币地址」"
+            title="选择币种与链后点击「生成充值地址」，系统自动派生该用户的 BIP44 链上地址"
             style="max-width: 520px"
           />
 
-          <el-descriptions v-if="depAddress" :column="1" border style="max-width: 520px">
-            <el-descriptions-item label="链">{{ depAddress.chainCode }}</el-descriptions-item>
-            <el-descriptions-item label="币种">{{ depAddress.symbol }}</el-descriptions-item>
-            <el-descriptions-item label="充币地址">
-              <span class="addr-text">{{ depAddress.address }}</span>
-              <el-button link type="primary" size="small" @click="copyAddress">复制</el-button>
-            </el-descriptions-item>
-            <el-descriptions-item v-if="depAddress.memo" label="Memo/Tag">
-              {{ depAddress.memo }}
-            </el-descriptions-item>
-          </el-descriptions>
+          <div v-if="depAddress" class="dep-addr-box">
+            <div class="dep-qr">
+              <img v-if="depQr" :src="depQr" alt="充值地址二维码" width="180" height="180" />
+            </div>
+            <el-descriptions :column="1" border style="flex: 1; min-width: 280px">
+              <el-descriptions-item label="链">{{ depAddress.chainCode }}</el-descriptions-item>
+              <el-descriptions-item label="币种">{{ depAddress.symbol }}</el-descriptions-item>
+              <el-descriptions-item label="充币地址">
+                <span class="addr-text">{{ depAddress.address }}</span>
+                <el-button link type="primary" size="small" @click="copyAddress">复制</el-button>
+              </el-descriptions-item>
+              <el-descriptions-item v-if="depAddress.memo" label="Memo/Tag">
+                {{ depAddress.memo }}
+              </el-descriptions-item>
+              <el-descriptions-item>
+                <span class="dep-tip">提示：仅支持充值对应链与币种，充错地址资产可能无法找回</span>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
         </el-tab-pane>
 
         <!-- 提现 -->
@@ -406,6 +425,22 @@ watch(activeTab, (tab) => {
 .addr-text {
   word-break: break-all;
   margin-right: 8px;
+}
+.dep-addr-box {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  max-width: 720px;
+}
+.dep-qr {
+  padding: 8px;
+  background: #fff;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.dep-tip {
+  font-size: 12px;
+  color: #e6a23c;
 }
 .unit-hint {
   margin-left: 10px;
