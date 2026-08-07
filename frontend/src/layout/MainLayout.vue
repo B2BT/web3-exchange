@@ -13,6 +13,7 @@ const menus = [
   { path: '/market', title: '行情' },
   { path: '/trade', title: '交易' },
   { path: '/asset', title: '资产' },
+  { path: '/wallet', title: 'Web3钱包' },
   { path: '/order', title: '订单' },
   { path: '/notify', title: '通知' },
   { path: '/user', title: '用户中心' },

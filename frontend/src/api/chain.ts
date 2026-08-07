@@ -108,3 +108,60 @@ export function withdrawList(userId: string | number, page = 1, size = 20): Prom
     params: { userId, page, size },
   })
 }
+
+// ================= 自托管钱包 (M2) =================
+
+/** 自托管钱包视图 */
+export interface WalletItem {
+  id?: number
+  userId?: string | number
+  chainCode?: string
+  /** HD=助记词派生 / PRIVATE=导入私钥 / READONLY=只读 */
+  walletType?: string
+  address?: string
+  addressType?: string
+  name?: string
+  /** 仅创建时返回一次 */
+  mnemonic?: string
+  status?: number
+  createTime?: string
+}
+
+/** 链上余额（最小单位 Long） */
+export interface WalletBalance {
+  chainCode?: string
+  symbol?: string
+  coinType?: string
+  balance?: string | number
+  decimals?: number
+}
+
+/** 创建自托管钱包 */
+export function walletCreate(data: { userId: string | number; chainCode: string; name?: string }): Promise<WalletItem> {
+  return request<WalletItem>({ url: '/chain/wallet/create', method: 'post', data })
+}
+
+/** 导入自托管钱包（助记词或私钥二选一） */
+export function walletImport(data: {
+  userId: string | number
+  chainCode: string
+  mnemonic?: string
+  privateKey?: string
+  name?: string
+}): Promise<WalletItem> {
+  return request<WalletItem>({ url: '/chain/wallet/import', method: 'post', data })
+}
+
+/** 用户钱包列表 */
+export function walletList(userId: string | number): Promise<WalletItem[]> {
+  return request<WalletItem[]>({ url: '/chain/wallet/list', method: 'get', params: { userId } })
+}
+
+/** 钱包链上余额 */
+export function walletBalance(userId: string | number, walletId: string | number): Promise<WalletBalance[]> {
+  return request<WalletBalance[]>({
+    url: `/chain/wallet/${walletId}/balance`,
+    method: 'get',
+    params: { userId },
+  })
+}

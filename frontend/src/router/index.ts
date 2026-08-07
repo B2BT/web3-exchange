@@ -77,6 +77,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '资产' },
       },
       {
+        path: 'wallet',
+        name: 'Wallet',
+        component: () => import('@/views/wallet/Wallet.vue'),
+        meta: { title: 'Web3钱包' },
+      },
+      {
         path: 'order',
         name: 'Order',
         component: () => import('@/views/order/Order.vue'),
