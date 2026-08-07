@@ -51,6 +51,30 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admin/withdrawals/AdminWithdrawals.vue'),
         meta: { title: '提现审核', admin: true },
       },
+      {
+        path: 'announcements',
+        name: 'AdminAnnouncements',
+        component: () => import('@/views/admin/announcements/AdminAnnouncements.vue'),
+        meta: { title: '公告管理', admin: true },
+      },
+      {
+        path: 'health',
+        name: 'AdminHealth',
+        component: () => import('@/views/admin/health/AdminHealth.vue'),
+        meta: { title: '服务监控', admin: true },
+      },
+      {
+        path: 'audit',
+        name: 'AdminAudit',
+        component: () => import('@/views/admin/audit/AdminAudit.vue'),
+        meta: { title: '审计日志', admin: true },
+      },
+      {
+        path: 'symbols',
+        name: 'AdminSymbols',
+        component: () => import('@/views/admin/symbols/AdminSymbols.vue'),
+        meta: { title: '交易对管理', admin: true },
+      },
     ],
   },
   {

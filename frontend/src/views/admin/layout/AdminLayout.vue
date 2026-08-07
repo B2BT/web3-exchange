@@ -13,6 +13,10 @@ const menus = [
   { path: '/admin/users', title: '用户管理', icon: 'User' },
   { path: '/admin/orders', title: '订单管理', icon: 'List' },
   { path: '/admin/withdrawals', title: '提现审核', icon: 'Wallet' },
+  { path: '/admin/announcements', title: '公告管理', icon: 'Bell' },
+  { path: '/admin/health', title: '服务监控', icon: 'Monitor' },
+  { path: '/admin/audit', title: '审计日志', icon: 'Document' },
+  { path: '/admin/symbols', title: '交易对管理', icon: 'Coin' },
 ]
 
 const activeMenu = computed(() => {
