@@ -5,7 +5,7 @@
 > 分阶段：**A 托管钱包**（交易所持私钥，用户链上充值/提现）→ **B 自托管钱包**（用户助记词/私钥，DApp/DeFi）→ **C 链上资产看板**
 
 ## 一、目标功能
-- **托管钱包（Custodial）**：交易所为每用户生成独立链地址（BIP44），充值自动扫链入账、提现签名出账。已有部分基础（chain 域 AssetAddress/Deposit/Withdraw/InternalChainController）。
+- **托管钱包（Custodial）**：交易所为每用户生成独立链地址（BIP44），充值自动扫链入账、提现签名出账。✅ M1 已落地 BIP44 每用户地址自动派生 + 前端充值二维码；充值/提现扫链入账与签名广播沿用 chain 域既有实现。
 - **自托管钱包（Self-Custodial）**：用户创建/导入助记词(HD)或私钥，导出到 Keystore/QR，可查链上余额、转账（SignMessage/交易签名），接 DApp（可选 WalletConnect）。
 - **链上资产看板**：绑定地址后展示 BTC/ETH/ERC-20/USDT 链上余额。
 
@@ -40,7 +40,14 @@
 - 生成测试报告 docs/test-reports/。
 
 ## 五、里程碑
-- **M1**：托管钱包补强（BIP44 地址生成 + 提现签名广播完善）→ 前端充值地址/二维码。
+
+- **M1** ✅（已落地 2026-08-07）：托管钱包补强（BIP44 地址生成 + 提现签名广播完善）→ 前端充值地址/二维码。
+  - 后端：`HdWalletService`（BIP39 主助记词 `chain.hd-wallet.mnemonic` + BIP32/44 派生 `m/44'/coin'/0'/0/index`，
+    EVM coinType=60、BTC=0、TRON=195 预留）；`DepositService.getOrCreateDepositAddress` 幂等自动生成
+    （每链一地址，Redis `chain:hd:index:{chainCode}` 自增索引，落 `t_asset_address` address_type=1）；
+    `GET /api/chain/deposit/address` 无则自动生成。提现签名广播（冻结→离线签名→RPC 广播→签名自检→回执确认→扣减/回滚）核验通过。
+  - 前端：资产页充值 tab 自动派生地址 + 二维码（qrcode 库）展示。
+  - 测试：`scripts/api_test.py` 新增 6 用例，23 全 PASS（`docs/test-reports/report-20260807_100927.md`）。
 - **M2**：自托管钱包创建/导入/地址/余额 → 前端 Web3 钱包页。
 - **M3**：自托管转账（签名广播）+ 链上资产看板。
 - **M4**：全量测试 + 报告 + 演示。
