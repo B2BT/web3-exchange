@@ -48,3 +48,25 @@ export function kline(symbol: string, period: string, limit = 500): Promise<Klin
     params: { period, limit },
   })
 }
+
+/** 深度档位（价格/数量，Long 最小单位） */
+export interface DepthLevel {
+  price: number
+  quantity: number
+}
+/** 深度盘口（用于深度图） */
+export interface DepthData {
+  symbol?: string
+  bids?: DepthLevel[]
+  asks?: DepthLevel[]
+}
+
+/** 订单簿深度（存于 order 域，市场数据公开） */
+export function depth(symbol: string, limit = 20): Promise<DepthData> {
+  return request<DepthData>({
+    url: `/order/depth?symbol=${encodeURIComponent(symbol)}`,
+    method: 'get',
+    params: { limit },
+  })
+}
+

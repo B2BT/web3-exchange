@@ -22,6 +22,7 @@ const menus = [
   { path: '/order', title: '订单' },
   { path: '/notify', title: '通知' },
   { path: '/risk', title: '安全' },
+  { path: '/api-keys', title: 'API密钥' },
   { path: '/user', title: '用户中心' },
 ]
 

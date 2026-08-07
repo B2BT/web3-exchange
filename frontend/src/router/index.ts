@@ -142,6 +142,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/risk/Risk.vue'),
         meta: { title: '账户安全' },
       },
+      {
+        path: 'api-keys',
+        name: 'ApiKeys',
+        component: () => import('@/views/user/ApiKeys.vue'),
+        meta: { title: 'API密钥' },
+      },
     ],
   },
   {

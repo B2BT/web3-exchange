@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import KlineChart from '@/components/KlineChart.vue'
+import DepthChart from '@/components/DepthChart.vue'
 import { tickerList } from '@/api/market'
 import type { KlineItem, TickerItem } from '@/api/market'
 import { marketWs } from '@/api/marketWs'
@@ -249,6 +250,21 @@ onBeforeUnmount(() => {
         :quote-decimals="quoteDecimals"
         :base-decimals="baseDecimals"
         :live-kline="liveKline"
+      />
+    </el-card>
+
+    <!-- 市场深度图 -->
+    <el-card shadow="never" class="depth-card g-card">
+      <template #header>
+        <div class="kline-header">
+          <span class="kline-title">{{ currentSymbol }} 市场深度</span>
+        </div>
+      </template>
+      <DepthChart
+        :symbol="currentSymbol"
+        :price-decimals="PRICE_DEC"
+        :base-decimals="baseDecimals"
+        :key="'depth-' + currentSymbol"
       />
     </el-card>
   </div>
