@@ -18,6 +18,7 @@ const menus = [
   { path: '/wallet', title: 'Web3钱包' },
   { path: '/order', title: '订单' },
   { path: '/notify', title: '通知' },
+  { path: '/risk', title: '安全' },
   { path: '/user', title: '用户中心' },
 ]
 

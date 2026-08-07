@@ -112,6 +112,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/user/UserCenter.vue'),
         meta: { title: '用户中心' },
       },
+      {
+        path: 'risk',
+        name: 'Risk',
+        component: () => import('@/views/risk/Risk.vue'),
+        meta: { title: '账户安全' },
+      },
     ],
   },
   {
