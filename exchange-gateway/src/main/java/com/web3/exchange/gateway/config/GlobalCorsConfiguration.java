@@ -19,14 +19,9 @@ public class GlobalCorsConfiguration {
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        // allowCredentials=true 时不允许使用 "*"，必须用具体的来源或模式
-        config.addAllowedOriginPattern("http://localhost:*");
-        config.addAllowedOriginPattern("http://127.0.0.1:*");
-        // 局域网访问：本机 IP（内网穿透最终落到本机）
-        config.addAllowedOriginPattern("http://192.168.8.212:*");
-        // 内网穿透域名（linkease 及其子域 p0-0-4-xxx.linkease.net）
-        config.addAllowedOriginPattern("https://*.linkease.net");
-        config.addAllowedOriginPattern("http://*.linkease.net");
+        // allowCredentials=true 时不允许使用 allowedOrigins 的 "*"，但 allowedOriginPatterns 支持 "*" 通配，
+        // 可配合任意来源(局域网IP/内网穿透域名/任意端口)使用——开发阶段放开，避免各访问源被拦。
+        config.addAllowedOriginPattern("*");
         config.addAllowedMethod("*");      // GET/POST/PUT/DELETE/OPTIONS 等全部允许
         config.addAllowedHeader("*");      // Authorization / Content-Type 等全部允许
         config.setAllowCredentials(true);
