@@ -86,7 +86,7 @@ onMounted(loadAll)
       <!-- 质押产品 -->
       <h4 class="section-title">质押产品</h4>
       <el-row :gutter="16" v-loading="loading">
-        <el-col :span="8" v-for="p in products" :key="p.id">
+        <el-col :span="8" v-for="p in products" :key="p.id" :xs="24" :sm="12" :md="8">
           <el-card shadow="never" class="g-card product-card tilt3d scan-wrap">
             <div class="p-name">{{ p.name }}</div>
             <div class="p-rate">

@@ -153,25 +153,25 @@ onMounted(() => {
 
       <!-- 账户卡片 -->
       <el-row :gutter="16" v-loading="accountLoading" style="margin-bottom: 20px">
-        <el-col :span="6">
+        <el-col :span="6" :xs="12" :sm="12" :md="6">
           <el-card shadow="never" class="g-card stat-card tilt3d">
             <div class="stat-label">抵押 Collateral</div>
             <div class="stat-value num">{{ human(account?.collateral, SYMBOL) }} {{ SYMBOL }}</div>
           </el-card>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="6" :xs="12" :sm="12" :md="6">
           <el-card shadow="never" class="g-card stat-card">
             <div class="stat-label">借入 Borrowed</div>
             <div class="stat-value num">{{ human(account?.borrowed, SYMBOL) }} {{ SYMBOL }}</div>
           </el-card>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="6" :xs="12" :sm="12" :md="6">
           <el-card shadow="never" class="g-card stat-card">
             <div class="stat-label">未还利息</div>
             <div class="stat-value num">{{ human(account?.interestAccrued, SYMBOL) }} {{ SYMBOL }}</div>
           </el-card>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="6" :xs="12" :sm="12" :md="6">
           <el-card shadow="never" class="g-card stat-card">
             <div class="stat-label">风险率 Risk</div>
             <div class="stat-value num" :class="riskClass(account?.riskRate)">
@@ -191,7 +191,7 @@ onMounted(() => {
 
       <!-- 操作区 -->
       <el-row :gutter="16">
-        <el-col :span="8">
+        <el-col :span="8" :xs="24" :sm="8">
           <el-card shadow="never" class="g-card op-card">
             <template #header><span>划转（现货 ⇄ 杠杆）</span></template>
             <el-form ref="transferRef" :model="transferForm" :rules="transferRules" label-width="70px">
@@ -210,7 +210,7 @@ onMounted(() => {
             </el-form>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="8" :xs="24" :sm="8">
           <el-card shadow="never" class="g-card op-card">
             <template #header><span>借币</span></template>
             <el-form ref="borrowRef" :model="borrowForm" :rules="borrowRules" label-width="70px">
@@ -223,7 +223,7 @@ onMounted(() => {
             </el-form>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="8" :xs="24" :sm="8">
           <el-card shadow="never" class="g-card op-card">
             <template #header><span>还币（本金 + 利息）</span></template>
             <el-form ref="repayRef" :model="repayForm" :rules="repayRules" label-width="70px">

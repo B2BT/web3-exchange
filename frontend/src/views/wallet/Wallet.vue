@@ -295,7 +295,7 @@ onMounted(() => {
         <el-button size="small" :loading="overviewLoading" @click="loadOverview" style="margin-left: 12px">刷新</el-button>
       </h4>
       <el-row :gutter="16" v-loading="overviewLoading" style="margin-bottom: 8px">
-        <el-col v-for="o in overview" :key="o.symbol" :span="8">
+        <el-col v-for="o in overview" :key="o.symbol" :span="8" :xs="24" :sm="12" :md="8">
           <el-card shadow="never" class="g-card overview-card tilt3d">
             <div class="ov-symbol">{{ o.symbol }}</div>
             <div class="ov-total num pulse-num">{{ humanTotal(o) }}</div>

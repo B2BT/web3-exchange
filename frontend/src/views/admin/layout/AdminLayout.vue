@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const drawerVisible = ref(false)
 
 const menus = [
   { path: '/admin/dashboard', title: '仪表盘', icon: 'Odometer' },
@@ -57,9 +58,14 @@ async function handleLogout() {
     <el-container class="admin-body">
       <!-- 顶栏 -->
       <el-header class="admin-header">
-        <div class="header-title">{{ route.meta.title || '管理后台' }}</div>
+        <div class="header-title">
+          <el-button class="admin-toggle desktop-hidden" text circle aria-label="菜单" @click="drawerVisible = true">
+            <el-icon :size="18"><Menu /></el-icon>
+          </el-button>
+          {{ route.meta.title || '管理后台' }}
+        </div>
         <div class="header-right">
-          <el-button text @click="router.push('/market')">
+          <el-button text class="btn-fore" @click="router.push('/market')">
             <el-icon style="margin-right: 4px"><Back /></el-icon>返回前台
           </el-button>
           <div class="admin-user">
@@ -75,6 +81,20 @@ async function handleLogout() {
           </el-button>
         </div>
       </el-header>
+
+      <!-- 移动端抽屉导航 -->
+      <el-drawer v-model="drawerVisible" direction="ltr" :size="'240px'" :with-header="false" class="admin-mobile-drawer">
+        <div class="aside-brand">
+          <div class="brand-logo">Web3</div>
+          <div class="brand-sub">管理后台</div>
+        </div>
+        <el-menu :default-active="activeMenu" router class="aside-menu" @select="drawerVisible = false">
+          <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
+            <el-icon><component :is="m.icon" /></el-icon>
+            <span>{{ m.title }}</span>
+          </el-menu-item>
+        </el-menu>
+      </el-drawer>
 
       <el-main class="admin-main">
         <router-view v-slot="{ Component }">
@@ -200,5 +220,47 @@ async function handleLogout() {
 .page-fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* ================= 响应式 / 移动端 ================= */
+.desktop-hidden {
+  display: inline-flex;
+}
+@media (min-width: 1024px) {
+  .desktop-hidden {
+    display: none !important;
+  }
+}
+@media (max-width: 1023px) {
+  /* 隐藏固定侧边栏，改用抽屉 */
+  .admin-aside {
+    display: none;
+  }
+  .admin-header {
+    padding: 0 12px;
+  }
+  .btn-fore {
+    display: none !important;
+  }
+  .admin-user .username {
+    display: none;
+  }
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .admin-toggle {
+    color: var(--text-primary);
+  }
+  .admin-main {
+    padding: 10px;
+  }
+  .admin-main .g-card {
+    padding: 14px !important;
+  }
+}
+.admin-mobile-drawer {
+  background: var(--bg-elevated);
 }
 </style>

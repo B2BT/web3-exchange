@@ -161,11 +161,18 @@ onMounted(loadCaptcha)
   position: relative;
   z-index: 2;
   width: 400px;
+  max-width: 100%;
   background: var(--glass-bg-strong);
   border-radius: var(--radius);
   padding: 40px 36px 28px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), var(--glow-purple);
   animation: fadeInUp 0.5s ease;
+}
+@media (max-width: 767px) {
+  .login-card {
+    width: 100%;
+    padding: 28px 20px 22px;
+  }
 }
 @keyframes fadeInUp {
   from {

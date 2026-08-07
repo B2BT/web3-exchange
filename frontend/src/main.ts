@@ -8,6 +8,7 @@ import router from './router'
 import './styles/main.css'
 import './styles/theme.css'
 import './styles/anim.css'
+import './styles/responsive.css'
 
 const app = createApp(App)
 

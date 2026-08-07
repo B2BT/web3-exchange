@@ -8,6 +8,9 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
+// 移动端抽屉导航开关
+const drawerVisible = ref(false)
+
 // 顶栏导航（占位路由，后续 F2/F3 填充）
 const menus = [
   { path: '/market', title: '行情' },
@@ -46,12 +49,22 @@ async function handleLogout() {
   <el-container class="layout">
     <el-header class="layout-header">
       <div class="header-left">
+        <!-- 移动端汉堡按钮 -->
+        <el-button
+          class="menu-toggle desktop-hidden"
+          text
+          circle
+          aria-label="菜单"
+          @click="drawerVisible = true"
+        >
+          <el-icon :size="20"><Menu /></el-icon>
+        </el-button>
         <div class="logo" @click="router.push('/market')">Web3 交易所</div>
         <el-menu
           mode="horizontal"
           :default-active="activeMenu"
           :ellipsis="false"
-          class="header-menu"
+          class="header-menu mobile-hidden"
           router
         >
           <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
@@ -83,6 +96,33 @@ async function handleLogout() {
         </el-dropdown>
       </div>
     </el-header>
+
+    <!-- 移动端抽屉导航 -->
+    <el-drawer
+      v-model="drawerVisible"
+      direction="ltr"
+      :size="'240px'"
+      :with-header="false"
+      class="mobile-drawer"
+    >
+      <div class="drawer-brand">
+        <div class="logo" @click="router.push('/market'); drawerVisible = false">Web3 交易所</div>
+      </div>
+      <el-menu
+        :default-active="activeMenu"
+        class="drawer-menu"
+        @select="drawerVisible = false"
+      >
+        <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
+          {{ m.title }}
+        </el-menu-item>
+      </el-menu>
+      <div class="drawer-user">
+        <el-button type="danger" plain style="width: 100%" @click="handleLogout">
+          <el-icon style="margin-right: 4px"><SwitchButton /></el-icon>退出登录
+        </el-button>
+      </div>
+    </el-drawer>
     <div class="grad-line header-grad-line" aria-hidden="true"></div>
 
     <el-main class="layout-main">
@@ -225,5 +265,63 @@ async function handleLogout() {
 .page-fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* ================= 响应式 / 移动端 ================= */
+/* 移动端隐藏水平菜单、桌面端隐藏汉堡按钮 */
+.mobile-hidden {
+  display: none;
+}
+.desktop-hidden {
+  display: inline-flex;
+}
+.menu-toggle {
+  color: var(--text-primary);
+}
+@media (min-width: 1024px) {
+  .mobile-hidden {
+    display: flex;
+  }
+  .desktop-hidden {
+    display: none !important;
+  }
+}
+@media (max-width: 1023px) {
+  .layout-header {
+    padding: 0 12px;
+  }
+  .logo {
+    font-size: 18px;
+  }
+  .username {
+    display: none; /* 小屏隐藏用户名，只留头像 */
+  }
+}
+/* 移动端抽屉样式 */
+.mobile-drawer {
+  background: var(--bg-elevated);
+}
+.drawer-brand {
+  padding: 20px 16px 8px;
+}
+.drawer-menu {
+  border-right: none;
+  background: transparent;
+}
+.drawer-menu :deep(.el-menu-item) {
+  border-radius: 8px;
+  margin: 2px 8px;
+  height: 44px;
+}
+.drawer-menu :deep(.el-menu-item.is-active) {
+  background: rgba(124, 58, 237, 0.16);
+  color: #fff;
+}
+.drawer-user {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  padding: 0 20px;
 }
 </style>

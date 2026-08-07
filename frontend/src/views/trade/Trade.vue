@@ -498,6 +498,14 @@ onBeforeUnmount(() => {
 .trade-page {
   padding: 16px;
 }
+@media (max-width: 767px) {
+  .trade-page {
+    padding: 10px;
+  }
+  .trade-title .el-select {
+    width: 130px !important;
+  }
+}
 .trade-grid {
   display: grid;
   grid-template-columns: 1fr;

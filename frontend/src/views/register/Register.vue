@@ -157,11 +157,18 @@ onMounted(loadCaptcha)
 }
 .register-card {
   width: 420px;
+  max-width: 100%;
   background: var(--glass-bg-strong);
   border-radius: var(--radius);
   padding: 32px 36px 24px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), var(--glow-purple);
   animation: fadeInUp 0.5s ease;
+}
+@media (max-width: 767px) {
+  .register-card {
+    width: 100%;
+    padding: 24px 20px 20px;
+  }
 }
 @keyframes fadeInUp {
   from {

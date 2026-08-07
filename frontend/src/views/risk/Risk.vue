@@ -76,7 +76,7 @@ onMounted(loadAll)
 
       <el-row :gutter="16">
         <!-- 反钓鱼码 -->
-        <el-col :span="12">
+        <el-col :span="12" :xs="24" :sm="12">
           <el-card shadow="never" class="g-card sub-card">
             <template #header><span>反钓鱼码 Anti-Phishing</span></template>
             <p class="hint">
@@ -96,7 +96,7 @@ onMounted(loadAll)
         </el-col>
 
         <!-- 风控规则 -->
-        <el-col :span="12">
+        <el-col :span="12" :xs="24" :sm="12">
           <el-card shadow="never" class="g-card sub-card">
             <template #header><span>风控规则</span></template>
             <el-table v-loading="loading" :data="rules" stripe>

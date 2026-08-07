@@ -1,0 +1,63 @@
+/* ============================================================
+   响应式 / 移动端适配工具样式
+   断点约定：
+     - 手机  <  768px
+     - 平板  768px - 1024px
+     - 桌面  >= 1024px
+   ============================================================ */
+
+/* 页面容器：大屏居中限宽，移动端紧凑 */
+.page-container {
+  padding: 20px;
+}
+
+/* 通用弹性换行工具（顶部工具栏在窄屏换行） */
+@media (max-width: 1023px) {
+  .page-container {
+    padding: 14px;
+  }
+}
+
+/* 移动端：收紧所有页面容器间距 */
+@media (max-width: 767px) {
+  .page-container {
+    padding: 10px;
+  }
+}
+
+/* Element Plus el-row/el-col 在窄屏的兜底：默认不强制等宽，
+   配合组件内 :xs/:sm 响应式 span 生效 */
+
+/* 隐藏类 */
+.mobile-only {
+  display: none;
+}
+@media (max-width: 767px) {
+  .mobile-only {
+    display: initial;
+  }
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* 触屏友好：按钮/点击项略放大热区（避免误触） */
+@media (max-width: 767px) {
+  .el-button--small {
+    --el-button-size: 30px;
+  }
+  /* 表格在小屏可横向滚动，避免挤压 */
+  .el-table {
+    font-size: 13px;
+  }
+}
+
+/* 页面切换动画在移动端简化（避免闪跳） */
+@media (max-width: 767px) {
+  .page-fade-enter-from {
+    transform: translateY(6px);
+  }
+  .page-fade-leave-to {
+    transform: translateY(-3px);
+  }
+}

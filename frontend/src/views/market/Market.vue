@@ -200,31 +200,31 @@ onBeforeUnmount(() => {
     <!-- ticker 卡片 -->
     <el-card shadow="never" class="ticker-card g-card tilt3d">
       <el-row :gutter="16" v-if="currentTicker">
-        <el-col :span="6">
+        <el-col :span="6" :xs="24" :sm="6">
           <div class="tick-label">{{ currentSymbol }} 最新价</div>
           <div class="tick-value breathe" :class="[changeClass, priceFlash]">
             {{ formatLong(currentTicker.lastPrice, PRICE_DEC, 6) }}
           </div>
         </el-col>
-        <el-col :span="4">
+        <el-col :span="4" :xs="8" :sm="4">
           <div class="tick-label">24h涨跌</div>
           <div class="tick-value" :class="changeClass">
             {{ formatBpPercent(currentTicker.change24h) }}
           </div>
         </el-col>
-        <el-col :span="4">
+        <el-col :span="4" :xs="8" :sm="4">
           <div class="tick-label">24h最高</div>
           <div class="tick-value">{{ formatLong(currentTicker.high24h, PRICE_DEC, 6) }}</div>
         </el-col>
-        <el-col :span="4">
+        <el-col :span="4" :xs="8" :sm="4">
           <div class="tick-label">24h最低</div>
           <div class="tick-value">{{ formatLong(currentTicker.low24h, PRICE_DEC, 6) }}</div>
         </el-col>
-        <el-col :span="3">
+        <el-col :span="3" :xs="12" :sm="3">
           <div class="tick-label">24h量</div>
           <div class="tick-value">{{ formatLong(currentTicker.volume24h, baseDecimals, 6) }}</div>
         </el-col>
-        <el-col :span="3">
+        <el-col :span="3" :xs="12" :sm="3">
           <div class="tick-label">24h额</div>
           <div class="tick-value">{{ formatLong(currentTicker.quoteVolume24h, quoteDecimals, 4) }}</div>
         </el-col>
@@ -295,5 +295,41 @@ onBeforeUnmount(() => {
 }
 .kline-title {
   font-weight: 600;
+}
+
+/* ================= 移动端 ================= */
+@media (max-width: 767px) {
+  .market-page {
+    padding: 10px;
+    gap: 12px;
+  }
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .toolbar .el-select {
+    width: 100% !important;
+    flex: 1 1 100%;
+  }
+  .period-group {
+    margin-left: 0;
+    order: 3;
+    width: 100%;
+  }
+  .period-group .el-button {
+    flex: 1;
+    margin-left: 0 !important;
+  }
+  .toolbar > .el-button {
+    margin-left: auto !important;
+    order: 2;
+  }
+  .ws-tag {
+    margin-left: 0;
+    order: 4;
+  }
+  .tick-value {
+    font-size: 17px;
+  }
 }
 </style>
