@@ -135,6 +135,22 @@ public class MarketAggregator {
     private final ConcurrentHashMap<String, Ticker> externalTickers = new ConcurrentHashMap<>();
 
     /**
+     * 注入一笔外部完整 K线（来自真实行情源，如 Binance kline 流）。
+     * <p>直接写入 store（幂等：同 (symbol, period, openTime) 覆盖），比从成交聚合更精确。</p>
+     */
+    public void applyExternalKline(String symbol, String interval, long openTime,
+                                   long open, long high, long low, long close,
+                                   long volume, long quoteVolume) {
+        KlineInterval iv = KlineInterval.fromName(interval);
+        if (iv == null) return;
+        Kline k = new Kline(symbol, iv.intervalName(), openTime, close, volume, quoteVolume);
+        k.setOpen(open);
+        k.setHigh(high);
+        k.setLow(low);
+        intervalMap(symbol, iv).put(openTime, k);
+    }
+
+    /**
      * 注入权威 24h ticker 快照（来自真实行情源，如 CoinGecko 的 high/low/volume/change）。
      * <p>若存在则 getTicker 直接返回该快照（K线推导仅作兜底），保证 24h 指标准确。</p>
      */
