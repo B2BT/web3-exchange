@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import * as marginApi from '@/api/margin'
 import type { MarginAccount, MarginLoan } from '@/api/margin'
 import { formatLong, toLong } from '@/utils/format'
 import { coinDecimals } from '@/config/market'
+
+const { t } = useI18n()
 
 const authStore = useAuthStore()
 const userId = computed(() => authStore.userInfo?.id)
@@ -146,7 +149,7 @@ onMounted(() => {
             <el-select v-model="SYMBOL" style="width: 110px" @change="refresh">
               <el-option v-for="c in COINS" :key="c" :label="c" :value="c" />
             </el-select>
-            <el-button size="small" :loading="accountLoading" @click="refresh">刷新</el-button>
+            <el-button size="small" :loading="accountLoading" @click="refresh">{{ t('common.refresh') }}</el-button>
           </div>
         </div>
       </template>
@@ -205,33 +208,33 @@ onMounted(() => {
                 <el-input v-model="transferForm.amount" placeholder="请输入金额" clearable />
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" :loading="opLoading" @click="submitTransfer">确认划转</el-button>
+                <el-button type="primary" :loading="opLoading" @click="submitTransfer">{{ t('margin.confirmTransfer') }}</el-button>
               </el-form-item>
             </el-form>
           </el-card>
         </el-col>
         <el-col :span="8" :xs="24" :sm="8">
           <el-card shadow="never" class="g-card op-card">
-            <template #header><span>借币</span></template>
+            <template #header><span>{{ t('margin.borrow') }}</span></template>
             <el-form ref="borrowRef" :model="borrowForm" :rules="borrowRules" label-width="70px">
               <el-form-item label="金额">
                 <el-input v-model="borrowForm.amount" placeholder="请输入借入金额" clearable />
               </el-form-item>
               <el-form-item>
-                <el-button type="warning" :loading="opLoading" @click="submitBorrow">借币</el-button>
+                <el-button type="warning" :loading="opLoading" @click="submitBorrow">{{ t('margin.borrow') }}</el-button>
               </el-form-item>
             </el-form>
           </el-card>
         </el-col>
         <el-col :span="8" :xs="24" :sm="8">
           <el-card shadow="never" class="g-card op-card">
-            <template #header><span>还币（本金 + 利息）</span></template>
+            <template #header><span>{{ t('margin.repay') }}（本金 + 利息）</span></template>
             <el-form ref="repayRef" :model="repayForm" :rules="repayRules" label-width="70px">
               <el-form-item label="金额">
                 <el-input v-model="repayForm.amount" placeholder="请输入还款金额" clearable />
               </el-form-item>
               <el-form-item>
-                <el-button type="danger" :loading="opLoading" @click="submitRepay">还币</el-button>
+                <el-button type="danger" :loading="opLoading" @click="submitRepay">{{ t('margin.repay') }}</el-button>
               </el-form-item>
             </el-form>
           </el-card>

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import * as riskApi from '@/api/risk'
 import type { LoginLog, RiskRule } from '@/api/risk'
+
+const { t } = useI18n()
 
 const authStore = useAuthStore()
 const userId = computed(() => authStore.userInfo?.id)
@@ -69,8 +72,8 @@ onMounted(loadAll)
     <el-card shadow="never" class="g-card scan-wrap">
       <template #header>
         <div class="card-header">
-          <span>账户安全 / 风控</span>
-          <el-button size="small" :loading="loading" @click="loadAll">刷新</el-button>
+          <span>{{ t('risk.title') }}</span>
+          <el-button size="small" :loading="loading" @click="loadAll">{{ t('common.refresh') }}</el-button>
         </div>
       </template>
 
@@ -89,7 +92,7 @@ onMounted(loadAll)
                 <el-input v-model="phForm.phrase" placeholder="4-64 字符自定义短语" maxlength="64" show-word-limit clearable />
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" :loading="saving" @click="savePhishing">保存</el-button>
+                <el-button type="primary" :loading="saving" @click="savePhishing">{{ t('risk.save') }}</el-button>
               </el-form-item>
             </el-form>
           </el-card>
@@ -98,7 +101,7 @@ onMounted(loadAll)
         <!-- 风控规则 -->
         <el-col :span="12" :xs="24" :sm="12">
           <el-card shadow="never" class="g-card sub-card">
-            <template #header><span>风控规则</span></template>
+            <template #header><span>{{ t('risk.rules') }}</span></template>
             <el-table v-loading="loading" :data="rules" stripe>
               <el-table-column prop="name" label="规则" min-width="180" />
               <el-table-column prop="ruleType" label="类型" width="150" />

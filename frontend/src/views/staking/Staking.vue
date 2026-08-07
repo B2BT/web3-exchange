@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import * as stakingApi from '@/api/staking'
 import type { StakingInterest, StakingPosition, StakingProduct } from '@/api/staking'
 import { formatLong, toLong } from '@/utils/format'
 import { coinDecimals } from '@/config/market'
+
+const { t } = useI18n()
 
 const authStore = useAuthStore()
 const userId = computed(() => authStore.userInfo?.id)
@@ -79,7 +82,7 @@ onMounted(loadAll)
       <template #header>
         <div class="card-header">
           <span>Staking / Earn 理财</span>
-          <el-button size="small" :loading="loading" @click="loadAll">刷新</el-button>
+          <el-button size="small" :loading="loading" @click="loadAll">{{ t('common.refresh') }}</el-button>
         </div>
       </template>
 
@@ -109,7 +112,7 @@ onMounted(loadAll)
 
       <!-- 质押表单 -->
       <el-card shadow="never" class="g-card stake-card">
-        <template #header><span>质押</span></template>
+        <template #header><span>{{ t('staking.stake') }}</span></template>
         <el-form ref="stakeRef" :model="stakeForm" :rules="stakeRules" label-width="70px" inline>
           <el-form-item label="产品" prop="productCode">
             <el-select v-model="stakeForm.productCode" placeholder="选择产品" style="width: 200px">
@@ -120,7 +123,7 @@ onMounted(loadAll)
             <el-input v-model="stakeForm.amount" placeholder="质押金额" style="width: 200px" clearable />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="opLoading" @click="submitStake">确认质押</el-button>
+            <el-button type="primary" :loading="opLoading" @click="submitStake">{{ t('staking.confirmStake') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -148,7 +151,7 @@ onMounted(loadAll)
         </el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
-            <el-button v-if="row.status === 0" size="small" type="danger" :loading="opLoading" @click="doRedeem(row)">赎回</el-button>
+            <el-button v-if="row.status === 0" size="small" type="danger" :loading="opLoading" @click="doRedeem(row)">{{ t('staking.redeem') }}</el-button>
             <span v-else>—</span>
           </template>
         </el-table-column>

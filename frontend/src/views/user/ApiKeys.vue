@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import * as apiKeyApi from '@/api/apiKey'
 import type { ApiKeyItem } from '@/api/apiKey'
+
+const { t } = useI18n()
 
 const list = ref<ApiKeyItem[]>([])
 const loading = ref(false)
@@ -69,8 +72,8 @@ onMounted(load)
     <el-card shadow="never" class="g-card scan-wrap">
       <template #header>
         <div class="head">
-          <span>API 密钥管理（OpenAPI）</span>
-          <el-button type="primary" size="small" @click="openCreate">创建 API 密钥</el-button>
+          <span>{{ t('apiKeys.title') }}</span>
+          <el-button type="primary" size="small" @click="openCreate">{{ t('apiKeys.create') }}</el-button>
         </div>
       </template>
 
@@ -89,12 +92,12 @@ onMounted(load)
         title="API 密钥用于程序化交易 / 量化机器人调用行情与交易接口。Secret 仅创建时显示一次，落库加密存储，请妥善保管。提现权限默认关闭，如需请重新创建。" />
 
       <el-table v-loading="loading" :data="list" stripe>
-        <el-table-column prop="label" label="备注" width="120" />
+        <el-table-column prop="label" :label="t('apiKeys.label')" width="120" />
         <el-table-column prop="apiKey" label="API Key" min-width="240" show-overflow-tooltip />
         <el-table-column prop="secretKey" label="Secret" width="80">
           <template #default>***</template>
         </el-table-column>
-        <el-table-column label="权限" width="150">
+        <el-table-column :label="t('apiKeys.permission')" width="150">
           <template #default="{ row }">
             <el-tag v-for="p in (row.permission || '').split(',')" :key="p" size="small" style="margin-right: 4px">{{ p }}</el-tag>
           </template>
@@ -110,27 +113,27 @@ onMounted(load)
             <el-button size="small" :type="row.status === 1 ? 'warning' : 'success'" @click="toggle(row)">
               {{ row.status === 1 ? '停用' : '启用' }}
             </el-button>
-            <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
+            <el-button size="small" type="danger" @click="remove(row)">{{ t('apiKeys.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
       <el-empty v-if="!loading && !list.length" description="暂无 API 密钥，点击右上角创建" />
     </el-card>
 
-    <el-dialog v-model="dlgVisible" title="创建 API 密钥" width="460px">
+    <el-dialog v-model="dlgVisible" :title="t('apiKeys.create')" width="460px">
       <el-form label-width="70px">
-        <el-form-item label="备注">
-          <el-input v-model="form.label" placeholder="如：量化机器人 / 测试脚本" />
+        <el-form-item :label="t('apiKeys.label')">
+          <el-input v-model="form.label" :placeholder="t('apiKeys.label')" />
         </el-form-item>
-        <el-form-item label="权限">
+        <el-form-item :label="t('apiKeys.permission')">
           <el-select v-model="form.permission" style="width: 100%">
             <el-option v-for="o in PERMISSION_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dlgVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">创建</el-button>
+        <el-button @click="dlgVisible = false">{{ t('apiKeys.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="save">{{ t('apiKeys.createConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>

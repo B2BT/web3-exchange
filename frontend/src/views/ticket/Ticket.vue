@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import * as ticketApi from '@/api/ticket'
 import { TICKET_CATEGORIES, TICKET_STATUS, type Ticket, type TicketDetail, type TicketReply } from '@/api/ticket'
+
+const { t } = useI18n()
 
 const list = ref<Ticket[]>([])
 const total = ref(0)
@@ -109,8 +112,8 @@ onMounted(load)
     <el-card shadow="never" class="g-card scan-wrap">
       <template #header>
         <div class="head">
-          <span>客服工单</span>
-          <el-button type="primary" size="small" @click="openCreate">提交工单</el-button>
+          <span>{{ t('ticket.title') }}</span>
+          <el-button type="primary" size="small" @click="openCreate">{{ t('ticket.submit') }}</el-button>
         </div>
       </template>
 
@@ -118,7 +121,7 @@ onMounted(load)
         <el-select v-model="statusFilter" placeholder="全部状态" clearable style="width: 140px" @change="page = 1; load()">
           <el-option v-for="(label, val) in TICKET_STATUS" :key="val" :label="label" :value="Number(val)" />
         </el-select>
-        <el-button @click="load">刷新</el-button>
+        <el-button @click="load">{{ t('ticket.refresh') }}</el-button>
       </div>
 
       <el-table v-loading="loading" :data="list" stripe>
@@ -137,8 +140,8 @@ onMounted(load)
         <el-table-column prop="createTime" label="提交时间" min-width="160" />
         <el-table-column label="操作" width="180">
           <template #default="{ row }">
-            <el-button size="small" @click="openDetail(row)">查看/回复</el-button>
-            <el-button v-if="row.status !== 3" size="small" type="warning" @click="close(row)">关闭</el-button>
+            <el-button size="small" @click="openDetail(row)">{{ t('ticket.viewReply') }}</el-button>
+            <el-button v-if="row.status !== 3" size="small" type="warning" @click="close(row)">{{ t('ticket.close') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -154,7 +157,7 @@ onMounted(load)
     </el-card>
 
     <!-- 新建工单 -->
-    <el-dialog v-model="dlgVisible" title="提交工单" width="520px">
+    <el-dialog v-model="dlgVisible" :title="t('ticket.submit')" width="520px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="70px">
         <el-form-item label="分类">
           <el-select v-model="form.category" style="width: 100%">
@@ -176,8 +179,8 @@ onMounted(load)
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dlgVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">提交</el-button>
+        <el-button @click="dlgVisible = false">{{ t('ticket.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="save">{{ t('ticket.submitConfirm') }}</el-button>
       </template>
     </el-dialog>
 
@@ -203,7 +206,7 @@ onMounted(load)
 
         <div class="reply-input">
           <el-input v-model="replyText" type="textarea" :rows="3" placeholder="输入回复内容..." />
-          <el-button type="primary" style="margin-top: 8px" :loading="replySaving" @click="sendReply">回复</el-button>
+          <el-button type="primary" style="margin-top: 8px" :loading="replySaving" @click="sendReply">{{ t('ticket.reply') }}</el-button>
         </div>
       </div>
     </el-dialog>

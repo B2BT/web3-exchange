@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import * as chainApi from '@/api/chain'
 import type { WalletItem, WalletBalance } from '@/api/chain'
 import { formatLong } from '@/utils/format'
 import { coinDecimals } from '@/config/market'
 import QRCode from 'qrcode'
+
+const { t } = useI18n()
 
 const authStore = useAuthStore()
 const userId = computed(() => authStore.userInfo?.id)
@@ -278,7 +281,7 @@ onMounted(() => {
       <template #header>
         <div class="card-header">
           <span>Web3 钱包</span>
-          <el-button size="small" :loading="loading" @click="loadWallets">刷新</el-button>
+          <el-button size="small" :loading="loading" @click="loadWallets">{{ t('common.refresh') }}</el-button>
         </div>
       </template>
 
@@ -292,7 +295,7 @@ onMounted(() => {
       <!-- 链上资产看板 (M3) -->
       <h4 class="section-title">
         链上资产看板
-        <el-button size="small" :loading="overviewLoading" @click="loadOverview" style="margin-left: 12px">刷新</el-button>
+        <el-button size="small" :loading="overviewLoading" @click="loadOverview" style="margin-left: 12px">{{ t('common.refresh') }}</el-button>
       </h4>
       <el-row :gutter="16" v-loading="overviewLoading" style="margin-bottom: 8px">
         <el-col v-for="o in overview" :key="o.symbol" :span="8" :xs="24" :sm="12" :md="8">
@@ -322,7 +325,7 @@ onMounted(() => {
         <el-table-column label="地址" min-width="300">
           <template #default="{ row }">
             <span class="addr-text">{{ row.address }}</span>
-            <el-button link type="primary" size="small" @click="copyAddress(row.address)">复制</el-button>
+            <el-button link type="primary" size="small" @click="copyAddress(row.address)">{{ t('wallet.copy') }}</el-button>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150">
@@ -335,7 +338,7 @@ onMounted(() => {
             >
               查余额
             </el-button>
-            <el-button link type="success" size="small" @click="openSend(row)">转账</el-button>
+            <el-button link type="success" size="small" @click="openSend(row)">{{ t('wallet.send') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -359,7 +362,7 @@ onMounted(() => {
       </template>
 
       <!-- 创建钱包 -->
-      <h4 class="section-title">创建钱包</h4>
+      <h4 class="section-title">{{ t('wallet.create') }}</h4>
       <el-form ref="createRef" :model="createForm" :rules="createRules" label-width="80px" style="max-width: 420px">
         <el-form-item label="链" prop="chainCode">
           <el-select v-model="createForm.chainCode">
@@ -370,7 +373,7 @@ onMounted(() => {
           <el-input v-model="createForm.name" placeholder="钱包备注名（可选）" clearable />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="createLoading" @click="submitCreate">创建钱包</el-button>
+          <el-button type="primary" :loading="createLoading" @click="submitCreate">{{ t('wallet.create') }}</el-button>
         </el-form-item>
       </el-form>
 
@@ -385,7 +388,7 @@ onMounted(() => {
         <div class="created-inner">
           <div class="mnemonic-card">
             <div class="mnemonic-words">{{ createdWallet.mnemonic }}</div>
-            <el-button type="primary" size="small" @click="copyMnemonic">复制助记词</el-button>
+            <el-button type="primary" size="small" @click="copyMnemonic">{{ t('wallet.copyMnemonic') }}</el-button>
           </div>
           <div class="addr-block">
             <div class="qr-box">
@@ -393,14 +396,14 @@ onMounted(() => {
             </div>
             <div class="addr-line">
               <span class="addr-text">{{ createdWallet.address }}</span>
-              <el-button link type="primary" size="small" @click="copyAddress(createdWallet.address || '')">复制</el-button>
+              <el-button link type="primary" size="small" @click="copyAddress(createdWallet.address || '')">{{ t('wallet.copy') }}</el-button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 导入钱包 -->
-      <h4 class="section-title">导入钱包</h4>
+      <h4 class="section-title">{{ t('wallet.import') }}</h4>
       <el-form ref="importRef" :model="importForm" :rules="importRules" label-width="80px" style="max-width: 520px">
         <el-form-item label="链" prop="chainCode">
           <el-select v-model="importForm.chainCode">
@@ -428,7 +431,7 @@ onMounted(() => {
           <el-input v-model="importForm.name" placeholder="钱包备注名（可选）" clearable />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="importLoading" @click="submitImport">导入钱包</el-button>
+          <el-button type="primary" :loading="importLoading" @click="submitImport">{{ t('wallet.import') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
