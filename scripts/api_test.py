@@ -125,6 +125,9 @@ def main():
     check("chain", "充值地址幂等(两次一致)", (w2.get("data") or {}).get("address") == wd.get("address"), "mismatch")
     w3 = curl("GET", BASE + "/api/chain/deposit/address?userId=%s&chainCode=ETH&symbol=ETH" % uid, token=tok)
     check("chain", "同链复用同一地址", (w3.get("data") or {}).get("address") == wd.get("address"), "mismatch")
+    # 充值记录分页
+    dl = curl("GET", BASE + "/api/chain/deposit/list?userId=%s&page=1&size=10" % uid, token=tok)
+    check("chain", "充值记录分页", dl.get("code") == 200 and (dl.get("data") or {}).get("total") is not None, dl.get("message"))
 
     # 提现申请(状态0待审核) —— 验证签名广播链路可用
     wd_apply = curl("POST", BASE + "/api/chain/withdraw/apply",
@@ -174,6 +177,21 @@ def main():
     check("chain.wallet", "转账from=钱包地址", (wsd.get("fromAddress") or "").lower() == (wikd.get("address") or "").lower(), wsd.get("fromAddress"))
     check("chain.wallet", "转账校验非法地址", curl("POST", BASE + "/api/chain/wallet/%s/send?userId=%s" % (wid_new, uid),
          {"userId": uid, "symbol": "ETH", "toAddress": "0x123", "amount": 1000}, token=tok).get("code") != 200, "")
+    # 转账缺 symbol → 404
+    check("chain.wallet", "转账缺币种拒绝", curl("POST", BASE + "/api/chain/wallet/%s/send?userId=%s" % (wid_new, uid),
+         {"userId": uid, "toAddress": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", "amount": 1000}, token=tok).get("code") != 200, "")
+    # 转账金额<=0 → 400
+    check("chain.wallet", "转账金额<=0拒绝", curl("POST", BASE + "/api/chain/wallet/%s/send?userId=%s" % (wid_new, uid),
+         {"userId": uid, "symbol": "ETH", "toAddress": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", "amount": 0}, token=tok).get("code") != 200, "")
+
+    # BTC 链自托管派生 (coinType=0 路径)
+    wbtc = curl("POST", BASE + "/api/chain/wallet/create", {"userId": uid, "chainCode": "BTC", "name": "btc-wallet"}, token=tok)
+    wbcd = wbtc.get("data") or {}
+    check("chain.wallet", "BTC链创建钱包", wbtc.get("code") == 200 and bool(wbcd.get("address")), wbtc.get("message"))
+
+    # 余额精度字段存在
+    bal0 = (wb.get("data") or [{}])[0]
+    check("chain.wallet", "余额含decimals精度", bal0.get("decimals") is not None, str(bal0))
 
     # 监控/网关
     print("\n[监控 monitor]")
