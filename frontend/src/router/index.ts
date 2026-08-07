@@ -83,6 +83,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Web3钱包' },
       },
       {
+        path: 'margin',
+        name: 'Margin',
+        component: () => import('@/views/margin/Margin.vue'),
+        meta: { title: '杠杆' },
+      },
+      {
         path: 'order',
         name: 'Order',
         component: () => import('@/views/order/Order.vue'),
