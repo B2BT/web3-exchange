@@ -111,6 +111,7 @@ async function handleLogout() {
       <el-menu
         :default-active="activeMenu"
         class="drawer-menu"
+        router
         @select="drawerVisible = false"
       >
         <el-menu-item v-for="m in menus" :key="m.path" :index="m.path">
