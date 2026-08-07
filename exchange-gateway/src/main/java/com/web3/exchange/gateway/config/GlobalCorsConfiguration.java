@@ -22,6 +22,11 @@ public class GlobalCorsConfiguration {
         // allowCredentials=true 时不允许使用 "*"，必须用具体的来源或模式
         config.addAllowedOriginPattern("http://localhost:*");
         config.addAllowedOriginPattern("http://127.0.0.1:*");
+        // 局域网访问：本机 IP（内网穿透最终落到本机）
+        config.addAllowedOriginPattern("http://192.168.8.212:*");
+        // 内网穿透域名（linkease 及其子域 p0-0-4-xxx.linkease.net）
+        config.addAllowedOriginPattern("https://*.linkease.net");
+        config.addAllowedOriginPattern("http://*.linkease.net");
         config.addAllowedMethod("*");      // GET/POST/PUT/DELETE/OPTIONS 等全部允许
         config.addAllowedHeader("*");      // Authorization / Content-Type 等全部允许
         config.setAllowCredentials(true);
