@@ -105,6 +105,8 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
         t.low = toMin(d.path("l").asText());
         t.change = parseChange(d.path("P").asText());
         t.quoteVolume = toMin(d.path("q").asText());
+        // volume：币数量，保留 8 位小数转 Long（decimals=8，避免溢出且显示合理）
+        t.volume = toMin(d.path("v").asText());
         // 用真实 24h ticker 覆盖
         var ticker = new com.web3.exchange.market.market.model.Ticker();
         ticker.setSymbol(symbol);
@@ -112,8 +114,9 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
         ticker.setHigh24h(t.high);
         ticker.setLow24h(t.low);
         ticker.setChange24h(t.change);
+        // quoteVolume = USDT 金额(×1e8 价格精度)；volume = 币数量(整数, decimals=0)
         ticker.setQuoteVolume24h(t.quoteVolume);
-        ticker.setVolume24h(toMin(d.path("v").asText()));
+        ticker.setVolume24h(t.volume);
         aggregator.updateExternalTicker(ticker);
         // 同时注入一笔外部成交，驱动最新价/短线 K线
         aggregator.applyExternalTrade(symbol, t.lastPrice, 100000000L);
@@ -196,6 +199,6 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
 
     /** 临时值容器（避免大量局部变量）。 */
     private static class TickerTmp {
-        long lastPrice, high, low, change, quoteVolume;
+        long lastPrice, high, low, change, quoteVolume, volume;
     }
 }

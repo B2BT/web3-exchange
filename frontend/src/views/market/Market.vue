@@ -226,11 +226,11 @@ onBeforeUnmount(() => {
         </el-col>
         <el-col :span="3" :xs="12" :sm="3">
           <div class="tick-label">{{ t('market.volume24h') }}</div>
-          <div class="tick-value">{{ formatLong(currentTicker.volume24h, baseDecimals, 6) }}</div>
+          <div class="tick-value">{{ formatLong(currentTicker.volume24h, 8, 2) }}</div>
         </el-col>
         <el-col :span="3" :xs="12" :sm="3">
           <div class="tick-label">{{ t('market.quoteVolume24h') }}</div>
-          <div class="tick-value">{{ formatLong(currentTicker.quoteVolume24h, quoteDecimals, 4) }}</div>
+          <div class="tick-value">{{ formatLong(currentTicker.quoteVolume24h, 8, 2) }}</div>
         </el-col>
       </el-row>
       <el-empty
