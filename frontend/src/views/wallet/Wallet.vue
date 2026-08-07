@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import * as chainApi from '@/api/chain'
 import type { WalletItem, WalletBalance } from '@/api/chain'
 import { formatLong } from '@/utils/format'
+import { coinDecimals } from '@/config/market'
 import QRCode from 'qrcode'
 
 const authStore = useAuthStore()
@@ -12,7 +13,7 @@ const userId = computed(() => authStore.userInfo?.id)
 
 const wallets = ref<WalletItem[]>([])
 const loading = ref(false)
-const activeId = ref<number | undefined>(undefined)
+const activeId = ref<string | number | undefined>(undefined)
 const balances = ref<Record<string, WalletBalance[]>>({})
 const balanceLoading = ref(false)
 
@@ -161,7 +162,114 @@ async function removeWallet(w: WalletItem) {
   ElMessage.info('删除功能待 M3 提供（当前为软删除预留）')
 }
 
-onMounted(loadWallets)
+// ---------- 转账 (M3) ----------
+const sendDialog = ref(false)
+const sendLoading = ref(false)
+const sendWallet = ref<WalletItem | null>(null)
+const sendForm = reactive({ symbol: 'ETH' as string, toAddress: '', amount: '' })
+const sendResult = ref<string>('')
+
+function openSend(w: WalletItem) {
+  sendWallet.value = w
+  sendForm.symbol = 'ETH'
+  sendForm.toAddress = ''
+  sendForm.amount = ''
+  sendResult.value = ''
+  sendDialog.value = true
+}
+
+async function submitSend() {
+  if (!userId.value || !sendWallet.value?.id) return
+  if (!sendForm.toAddress.trim() || !sendForm.amount.trim()) {
+    ElMessage.warning('请填写目标地址与金额')
+    return
+  }
+  const dec = coinDecimals(sendForm.symbol) || 18
+  const amount = toMinUnit(sendForm.amount, dec)
+  if (amount <= 0) {
+    ElMessage.warning('金额需大于 0')
+    return
+  }
+  sendLoading.value = true
+  sendResult.value = ''
+  try {
+    const r = await chainApi.walletSend(userId.value, sendWallet.value.id, {
+      symbol: sendForm.symbol,
+      toAddress: sendForm.toAddress.trim(),
+      amount,
+    })
+    sendResult.value = r.txHash || ''
+    ElMessage.success('转账已广播上链')
+  } catch {
+    // 错误已由拦截器提示
+  } finally {
+    sendLoading.value = false
+  }
+}
+
+/** 人读金额 → Long 最小单位（按币种精度） */
+function toMinUnit(amount: string, decimals: number): number {
+  const s = amount.trim()
+  const n = Number(s)
+  if (!s || !Number.isFinite(n) || n < 0) return 0
+  const [intPart, fracPart = ''] = s.split('.')
+  const frac = fracPart.padEnd(decimals, '0').slice(0, decimals)
+  return Number(intPart + frac)
+}
+
+// ---------- 链上资产看板 (M3) ----------
+const overviewLoading = ref(false)
+const overview = ref<{ symbol: string; total: string; count: number; decimals: number }[]>([])
+
+/** 汇总所有钱包的链上余额，按币种聚合 */
+async function loadOverview() {
+  if (!userId.value) return
+  overviewLoading.value = true
+  try {
+    const ws = await chainApi.walletList(userId.value)
+    const agg: Record<string, { total: bigint; count: number; decimals: number }> = {}
+    for (const w of ws) {
+      if (!w.id) continue
+      try {
+        const bs = await chainApi.walletBalance(userId.value, w.id)
+        for (const b of bs) {
+          const key = b.symbol || ''
+          if (!agg[key]) agg[key] = { total: 0n, count: 0, decimals: b.decimals ?? 0 }
+          agg[key].total += BigInt(b.balance ?? 0)
+          agg[key].count += 1
+          agg[key].decimals = b.decimals ?? 0
+        }
+      } catch {
+        // 单钱包余额失败不阻断
+      }
+    }
+    overview.value = Object.entries(agg).map(([symbol, v]) => ({
+      symbol,
+      total: v.total.toString(),
+      count: v.count,
+      decimals: v.decimals,
+    }))
+  } finally {
+    overviewLoading.value = false
+  }
+}
+
+function humanTotal(o: { total: string; decimals: number }): string {
+  const n = BigInt(o.total)
+  const dec = o.decimals
+  const neg = n < 0n
+  const abs = neg ? -n : n
+  const s = abs.toString().padStart(dec + 1, '0')
+  const intPart = s.slice(0, s.length - dec) || '0'
+  const fracPart = s.slice(s.length - dec).replace(/0+$/, '')
+  const human = fracPart ? `${intPart}.${fracPart}` : intPart
+  return (neg ? '-' : '') + human
+}
+
+onMounted(() => {
+  loadWallets()
+  loadOverview()
+})
 </script>
 
 <template>
@@ -181,7 +289,24 @@ onMounted(loadWallets)
         style="margin-bottom: 16px"
       />
 
+      <!-- 链上资产看板 (M3) -->
+      <h4 class="section-title">
+        链上资产看板
+        <el-button size="small" :loading="overviewLoading" @click="loadOverview" style="margin-left: 12px">刷新</el-button>
+      </h4>
+      <el-row :gutter="16" v-loading="overviewLoading" style="margin-bottom: 8px">
+        <el-col v-for="o in overview" :key="o.symbol" :span="8">
+          <el-card shadow="never" class="g-card overview-card">
+            <div class="ov-symbol">{{ o.symbol }}</div>
+            <div class="ov-total num">{{ humanTotal(o) }}</div>
+            <div class="ov-sub">{{ o.count }} 个钱包累计</div>
+          </el-card>
+        </el-col>
+      </el-row>
+      <el-empty v-if="!overviewLoading && !overview.length" description="暂无链上资产（可先创建或导入钱包）" style="padding: 8px 0" />
+
       <!-- 钱包列表 -->
+      <h4 class="section-title">我的钱包</h4>
       <el-table v-loading="loading" :data="wallets" stripe>
         <el-table-column label="名称" min-width="140">
           <template #default="{ row }">{{ row.name || row.walletType }}</template>
@@ -200,7 +325,7 @@ onMounted(loadWallets)
             <el-button link type="primary" size="small" @click="copyAddress(row.address)">复制</el-button>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="150">
           <template #default="{ row }">
             <el-button
               link
@@ -210,6 +335,7 @@ onMounted(loadWallets)
             >
               查余额
             </el-button>
+            <el-button link type="success" size="small" @click="openSend(row)">转账</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -306,6 +432,43 @@ onMounted(loadWallets)
         </el-form-item>
       </el-form>
     </el-card>
+
+    <!-- 转账对话框 (M3) -->
+    <el-dialog v-model="sendDialog" title="链上转账" width="480px">
+      <el-alert
+        type="warning"
+        :closable="false"
+        :title="`将从钱包 ${sendWallet?.name || sendWallet?.walletType} 广播一笔链上交易`"
+        style="margin-bottom: 12px"
+      />
+      <el-form label-width="80px">
+        <el-form-item label="转出地址">
+          <span class="addr-text">{{ sendWallet?.address }}</span>
+        </el-form-item>
+        <el-form-item label="币种">
+          <el-select v-model="sendForm.symbol">
+            <el-option label="ETH (原生)" value="ETH" />
+            <el-option label="USDT (ERC-20)" value="USDT" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目标地址">
+          <el-input v-model="sendForm.toAddress" placeholder="0x + 40 位十六进制地址" />
+        </el-form-item>
+        <el-form-item label="金额">
+          <el-input v-model="sendForm.amount" placeholder="请输入金额" />
+          <span class="unit-hint">单位 {{ sendForm.symbol }}（精度 {{ coinDecimals(sendForm.symbol) || 18 }}）</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="sendDialog = false">取消</el-button>
+        <el-button type="primary" :loading="sendLoading" @click="submitSend">签名并广播</el-button>
+      </template>
+      <el-alert v-if="sendResult" type="success" :closable="false" title="已上链" style="margin-top: 8px">
+        <template #default>
+          <span class="addr-text">TX: {{ sendResult }}</span>
+        </template>
+      </el-alert>
+    </el-dialog>
   </div>
 </template>
 
@@ -361,5 +524,32 @@ onMounted(loadWallets)
   display: flex;
   align-items: center;
   max-width: 340px;
+}
+.overview-card {
+  text-align: center;
+  padding: 8px 0;
+}
+.ov-symbol {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.ov-total {
+  font-size: 24px;
+  font-weight: 700;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ov-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+.unit-hint {
+  margin-left: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 </style>

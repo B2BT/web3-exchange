@@ -1,5 +1,7 @@
 package com.web3.exchange.chain.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 /**
@@ -7,7 +9,8 @@ import lombok.Data;
  */
 @Data
 public class WalletSendResultVO {
-    /** 钱包ID */
+    /** 钱包ID（雪花，String 防 JS 精度丢失） */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long walletId;
     /** 链编码 */
     private String chainCode;

@@ -1,18 +1,22 @@
 package com.web3.exchange.chain.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 /**
  * 自托管钱包视图。
- * <p>create 时一次性返回明文 mnemonic（仅当次，不入库明文返回），其余接口不返回。</p>
+ * <p>create 时一次性返回明文 mnemonic（仅当次，不入库明文返回），其余接口不返回。
+ * id 为雪花 Long，序列化为 String 防 JS 精度丢失。</p>
  */
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class WalletVO {
     /** 钱包ID（雪花，String 防 JS 精度丢失） */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     /** 用户ID */
     private Long userId;

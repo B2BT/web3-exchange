@@ -113,7 +113,7 @@ export function withdrawList(userId: string | number, page = 1, size = 20): Prom
 
 /** 自托管钱包视图 */
 export interface WalletItem {
-  id?: number
+  id?: string | number
   userId?: string | number
   chainCode?: string
   /** HD=助记词派生 / PRIVATE=导入私钥 / READONLY=只读 */
@@ -163,5 +163,30 @@ export function walletBalance(userId: string | number, walletId: string | number
     url: `/chain/wallet/${walletId}/balance`,
     method: 'get',
     params: { userId },
+  })
+}
+
+/** 转账结果 */
+export interface WalletSendResult {
+  walletId?: string | number
+  chainCode?: string
+  symbol?: string
+  fromAddress?: string
+  toAddress?: string
+  amount?: number
+  txHash?: string
+}
+
+/** 钱包链上转账（离线签名 + 广播） */
+export function walletSend(
+  userId: string | number,
+  walletId: string | number,
+  data: { symbol: string; toAddress: string; amount: number },
+): Promise<WalletSendResult> {
+  return request<WalletSendResult>({
+    url: `/chain/wallet/${walletId}/send`,
+    method: 'post',
+    params: { userId },
+    data: { userId, ...data },
   })
 }
