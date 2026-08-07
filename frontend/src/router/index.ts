@@ -89,6 +89,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '杠杆' },
       },
       {
+        path: 'staking',
+        name: 'Staking',
+        component: () => import('@/views/staking/Staking.vue'),
+        meta: { title: '理财' },
+      },
+      {
         path: 'order',
         name: 'Order',
         component: () => import('@/views/order/Order.vue'),
