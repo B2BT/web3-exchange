@@ -189,6 +189,7 @@
         <module>exchange-user</module>
         <module>exchange-admin</module>
         <module>exchange-margin</module>
+        <module>exchange-staking</module>
     </modules>
 
 </project>

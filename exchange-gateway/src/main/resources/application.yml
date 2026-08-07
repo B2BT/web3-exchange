@@ -85,6 +85,11 @@ spring:
           uri: lb://exchange-margin
           predicates:
             - Path=/api/margin/**
+        # staking 服务（理财）：无 context-path，Controller 映射 /api/staking/**
+        - id: staking-service
+          uri: lb://exchange-staking
+          predicates:
+            - Path=/api/staking/**
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market
