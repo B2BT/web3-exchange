@@ -13,12 +13,16 @@ import com.web3.exchange.chain.entity.Deposit;
 import com.web3.exchange.chain.feign.AssetClient;
 import com.web3.exchange.chain.mapper.AssetAddressMapper;
 import com.web3.exchange.chain.mapper.DepositMapper;
+import com.web3.exchange.chain.service.CoinService;
 import com.web3.exchange.chain.service.DepositService;
+import com.web3.exchange.chain.service.HdWalletService;
 import com.web3.exchange.common.asset.dto.CreditRequest;
 import com.web3.exchange.common.asset.dto.LedgerVO;
+import com.web3.exchange.common.exception.NotFoundException;
 import com.web3.exchange.common.model.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,10 +41,18 @@ public class DepositServiceImpl extends ServiceImpl<DepositMapper, Deposit> impl
 
     private final AssetAddressMapper assetAddressMapper;
     private final AssetClient assetClient;
+    private final HdWalletService hdWalletService;
+    private final CoinService coinService;
+    private final StringRedisTemplate redis;
 
-    public DepositServiceImpl(AssetAddressMapper assetAddressMapper, AssetClient assetClient) {
+    public DepositServiceImpl(AssetAddressMapper assetAddressMapper, AssetClient assetClient,
+                              HdWalletService hdWalletService, CoinService coinService,
+                              StringRedisTemplate redis) {
         this.assetAddressMapper = assetAddressMapper;
         this.assetClient = assetClient;
+        this.hdWalletService = hdWalletService;
+        this.coinService = coinService;
+        this.redis = redis;
     }
 
     @Override
@@ -176,6 +188,56 @@ public class DepositServiceImpl extends ServiceImpl<DepositMapper, Deposit> impl
                 .eq(AssetAddress::getAddressType, 1)
                 .eq(AssetAddress::getIsActive, 1)
                 .last("limit 1"));
+    }
+
+    @Override
+    public AssetAddress getOrCreateDepositAddress(Long userId, String chainCode, String symbol) {
+        // 1. 幂等：每链一个地址（同链所有币种共用），先按 (userId, chainCode, type=1, active=1) 查
+        AssetAddress exist = assetAddressMapper.selectOne(new LambdaQueryWrapper<AssetAddress>()
+                .eq(AssetAddress::getUserId, userId)
+                .eq(AssetAddress::getChainCode, chainCode)
+                .eq(AssetAddress::getAddressType, 1)
+                .eq(AssetAddress::getIsActive, 1)
+                .last("limit 1"));
+        if (exist != null) {
+            return exist;
+        }
+        // 2. 校验币种（取 coinId）与链
+        Coin coin = coinService.getBySymbol(symbol);
+        if (coin == null) {
+            throw new NotFoundException("币种不存在: " + symbol);
+        }
+        // 3. 取该链下一个派生索引（Redis 自增，保证地址唯一）
+        long index = redis.opsForValue().increment("chain:hd:index:" + chainCode);
+        String address = hdWalletService.deriveAddress(chainCode, (int) (index - 1));
+        AssetAddress addr = new AssetAddress()
+                .setUserId(userId)
+                .setChainCode(chainCode)
+                .setCoinId(coin.getId())
+                .setSymbol(symbol)
+                .setAddress(address)
+                .setMemo("hd:" + (index - 1))
+                .setAddressType(1)
+                .setIsActive(1);
+        addr.setId(IdWorker.getId());
+        try {
+            assetAddressMapper.insert(addr);
+            log.info("[deposit] 自动生成充币地址 user={} chain={} symbol={} addr={} index={}",
+                    userId, chainCode, symbol, address, index - 1);
+        } catch (DuplicateKeyException e) {
+            // uk_chain_address 并发撞地址（极小概率）→ 再查一次既有
+            AssetAddress again = assetAddressMapper.selectOne(new LambdaQueryWrapper<AssetAddress>()
+                    .eq(AssetAddress::getUserId, userId)
+                    .eq(AssetAddress::getChainCode, chainCode)
+                    .eq(AssetAddress::getAddressType, 1)
+                    .eq(AssetAddress::getIsActive, 1)
+                    .last("limit 1"));
+            if (again != null) {
+                return again;
+            }
+            throw e;
+        }
+        return addr;
     }
 
     @Override

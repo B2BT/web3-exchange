@@ -34,6 +34,15 @@ public interface DepositService {
     /** 用户充值地址（未绑定返回 null）。 */
     AssetAddress getDepositAddress(Long userId, String chainCode, String symbol);
 
+    /**
+     * 获取或自动生成用户充币地址（M1 BIP44 HD 派生）。
+     * <p>已绑定则返回既有；否则从主助记词派生一个新地址并持久化到 t_asset_address
+     * （address_type=1, is_active=1），幂等。每链一个地址（同链所有币种共用）。</p>
+     *
+     * @return 用户该链的充币地址（非 null）
+     */
+    AssetAddress getOrCreateDepositAddress(Long userId, String chainCode, String symbol);
+
     /** 用户充值记录分页。 */
     Page<DepositVO> pageByUser(Long userId, int page, int size);
 

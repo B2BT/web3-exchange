@@ -82,6 +82,9 @@ chain:
   hot-wallet:
     platform-user-id: 900004
     private-key: ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+  # HD 钱包（BIP44 每用户充币地址派生；仅 Mock/测试网，生产用 KMS/HSM）
+  hd-wallet:
+    mnemonic: "test test test test test test test test test test test junk"
 
 # 最简SpringDoc配置
 springdoc:

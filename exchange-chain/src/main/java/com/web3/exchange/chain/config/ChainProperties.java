@@ -20,6 +20,9 @@ public class ChainProperties {
     /** 热钱包 */
     private HotWallet hotWallet = new HotWallet();
 
+    /** HD 钱包（BIP44 每用户充币地址派生） */
+    private HdWallet hdWallet = new HdWallet();
+
     @Data
     public static class Scan {
         /** 是否开启扫描 */
@@ -40,5 +43,13 @@ public class ChainProperties {
         private Long platformUserId;
         /** 热钱包私钥（仅 Mock/测试网，十六进制无 0x 前缀） */
         private String privateKey;
+    }
+
+    @Data
+    public static class HdWallet {
+        /** BIP39 主助记词（仅 Mock/测试网，严禁明文入库/落日志；生产需 KMS/HSM） */
+        private String mnemonic;
+        /** 派生口令（通常为空） */
+        private String passphrase = "";
     }
 }

@@ -37,15 +37,12 @@ public class ChainController {
         this.withdrawService = withdrawService;
     }
 
-    @Operation(summary = "查询用户充币地址")
+    @Operation(summary = "查询用户充币地址（无则自动生成 BIP44 派生地址）")
     @GetMapping("/deposit/address")
     public Result<AssetAddressVO> depositAddress(@RequestParam("userId") Long userId,
                                                  @RequestParam("chainCode") String chainCode,
                                                  @RequestParam("symbol") String symbol) {
-        AssetAddress addr = depositService.getDepositAddress(userId, chainCode, symbol);
-        if (addr == null) {
-            return Result.notFound("未绑定充币地址，请联系运营预配置");
-        }
+        AssetAddress addr = depositService.getOrCreateDepositAddress(userId, chainCode, symbol);
         AssetAddressVO vo = new AssetAddressVO();
         vo.setId(addr.getId());
         vo.setUserId(addr.getUserId());
