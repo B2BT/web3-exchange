@@ -193,6 +193,66 @@ def main():
     bal0 = (wb.get("data") or [{}])[0]
     check("chain.wallet", "余额含decimals精度", bal0.get("decimals") is not None, str(bal0))
 
+    # 永续合约 futures (P3.5)
+    print("\n[永续合约 futures]")
+    FUT_SYM = "BTC-USDT-SWAP"
+    FUT_USER = 99998888  # 独立测试用户
+    fc = curl("GET", BASE + "/api/futures/contracts")
+    fcd = fc.get("data") or []
+    check("futures", "合约列表", fc.get("code") == 200 and len(fcd) > 0, fc.get("message"))
+    fmp = curl("GET", BASE + "/api/futures/mark/%s" % FUT_SYM)
+    fmpv = fmp.get("data")
+    check("futures", "标记价", fmp.get("code") == 200 and fmpv is not None and int(fmpv) > 0, fmp.get("message"))
+
+    # 入金 + 账户
+    dep = curl("POST", BASE + "/api/futures/deposit?userId=%s&coin=USDT&amount=10000" % FUT_USER)
+    facc = (dep.get("data") or {})
+    check("futures", "合约入金10000USDT", dep.get("code") == 200 and int(facc.get("marginBalance") or 0) > 0, dep.get("message"))
+    facq = curl("GET", BASE + "/api/futures/account?userId=%s&coin=USDT" % FUT_USER)
+    facqd = facq.get("data") or {}
+    check("futures", "查询合约账户", facq.get("code") == 200 and int(facqd.get("availableBalance") or 0) > 0, facq.get("message"))
+
+    # 下单：开多(挂单) → 对手开空撮合成交 → 持仓建立
+    o1 = curl("POST", BASE + "/api/futures/order",
+              {"userId": FUT_USER, "symbol": FUT_SYM, "side": 1, "orderType": 1,
+               "price": "0.5", "quantity": "0.001", "leverage": 10})
+    o1d = o1.get("data") or {}
+    check("futures", "开多限价下单", o1.get("code") == 200 and o1d.get("orderNo"), o1.get("message"))
+    # 对手开空(另一用户)撮合
+    curl("POST", BASE + "/api/futures/deposit?userId=99998889&coin=USDT&amount=10000")
+    o2 = curl("POST", BASE + "/api/futures/order",
+              {"userId": 99998889, "symbol": FUT_SYM, "side": 2, "orderType": 1,
+               "price": "0.5", "quantity": "0.001", "leverage": 10})
+    o2d = o2.get("data") or {}
+    check("futures", "对手开空撮合成交", o2.get("code") == 200 and int(o2d.get("filled") or 0) > 0, o2.get("message"))
+
+    # 持仓
+    fpos = curl("GET", BASE + "/api/futures/position?userId=%s" % FUT_USER)
+    fposd = fpos.get("data") or []
+    long_pos = next((p for p in fposd if p.get("side") == 1 and int(p.get("size") or 0) > 0), None)
+    check("futures", "多头持仓建立", long_pos is not None and int(long_pos.get("size") or 0) > 0, "no long position")
+
+    # 平仓：平多(挂单) → 对手开多吃 → 持仓清空
+    c1 = curl("POST", BASE + "/api/futures/order",
+              {"userId": FUT_USER, "symbol": FUT_SYM, "side": 3, "orderType": 1,
+               "price": "0.5", "quantity": "0.001", "leverage": 10})
+    c1d = c1.get("data") or {}
+    check("futures", "平多下单", c1.get("code") == 200 and c1d.get("orderNo"), c1.get("message"))
+    curl("POST", BASE + "/api/futures/deposit?userId=99998890&coin=USDT&amount=10000")
+    c2 = curl("POST", BASE + "/api/futures/order",
+              {"userId": 99998890, "symbol": FUT_SYM, "side": 1, "orderType": 1,
+               "price": "0.5", "quantity": "0.001", "leverage": 10})
+    c2d = c2.get("data") or {}
+    check("futures", "对手开多吃平多", c2.get("code") == 200 and int(c2d.get("filled") or 0) > 0, c2.get("message"))
+    fpos2 = curl("GET", BASE + "/api/futures/position?userId=%s" % FUT_USER)
+    fpos2d = fpos2.get("data") or []
+    still_long = next((p for p in fpos2d if p.get("side") == 1 and int(p.get("size") or 0) > 0), None)
+    check("futures", "平多后多头持仓清空", still_long is None, "long still open")
+    # 保证金释放
+    facq2 = curl("GET", BASE + "/api/futures/account?userId=%s&coin=USDT" % FUT_USER)
+    facq2d = facq2.get("data") or {}
+    check("futures", "平仓后占用保证金归零", int(facq2d.get("positionMargin") or 0) == 0, str(facq2d.get("positionMargin")))
+
     # 监控/网关
     print("\n[监控 monitor]")
     h = curl("GET", BASE + "/api/market/ticker/list")  # 公开行情→网关可达性
