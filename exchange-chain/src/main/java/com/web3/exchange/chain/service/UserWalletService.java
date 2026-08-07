@@ -3,13 +3,15 @@ package com.web3.exchange.chain.service;
 import com.web3.exchange.chain.dto.WalletBalanceVO;
 import com.web3.exchange.chain.dto.WalletCreateRequest;
 import com.web3.exchange.chain.dto.WalletImportRequest;
+import com.web3.exchange.chain.dto.WalletSendRequest;
+import com.web3.exchange.chain.dto.WalletSendResultVO;
 import com.web3.exchange.chain.dto.WalletVO;
 import com.web3.exchange.chain.entity.UserWallet;
 
 import java.util.List;
 
 /**
- * 用户自托管钱包服务（创建/导入/列表/地址/余额）。
+ * 用户自托管钱包服务（创建/导入/列表/地址/余额/转账）。
  */
 public interface UserWalletService {
 
@@ -32,4 +34,9 @@ public interface UserWalletService {
 
     /** 查询钱包链上余额（原生币 + 该链已启用代币）。 */
     List<WalletBalanceVO> balance(Long userId, Long walletId);
+
+    /**
+     * 自托管钱包链上转账：解密钱包私钥 → 离线签名 → 广播。
+     */
+    WalletSendResultVO send(Long userId, Long walletId, WalletSendRequest req);
 }

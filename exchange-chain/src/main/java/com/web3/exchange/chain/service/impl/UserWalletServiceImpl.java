@@ -9,11 +9,15 @@ import com.web3.exchange.chain.crypto.Bip44Utils;
 import com.web3.exchange.chain.dto.WalletBalanceVO;
 import com.web3.exchange.chain.dto.WalletCreateRequest;
 import com.web3.exchange.chain.dto.WalletImportRequest;
+import com.web3.exchange.chain.dto.WalletSendRequest;
+import com.web3.exchange.chain.dto.WalletSendResultVO;
 import com.web3.exchange.chain.dto.WalletVO;
+import com.web3.exchange.chain.entity.Chain;
 import com.web3.exchange.chain.entity.Coin;
 import com.web3.exchange.chain.entity.UserWallet;
 import com.web3.exchange.chain.mapper.UserWalletMapper;
 import com.web3.exchange.chain.registry.ChainRegistry;
+import com.web3.exchange.chain.service.ChainService;
 import com.web3.exchange.chain.service.CoinService;
 import com.web3.exchange.chain.service.UserWalletService;
 import com.web3.exchange.common.exception.BusinessException;
@@ -28,19 +32,28 @@ import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Type;
 import org.web3j.abi.datatypes.generated.Uint256;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.RawTransaction;
+import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthCall;
+import org.web3j.protocol.core.methods.response.EthSendTransaction;
+import org.web3j.utils.Numeric;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * 用户自托管钱包服务实现。
  * <p>创建/导入 → 派生地址 → 私钥/助记词 AES-GCM 加密入库（明文不落库）；余额查询走 chainRegistry
- * 的 Web3j（原生币 eth_getBalance / ERC-20 eth_call balanceOf）。金额 Long 最小单位。</p>
+ * 的 Web3j（原生币 eth_getBalance / ERC-20 eth_call balanceOf）；转账解密钱包私钥离线签名后广播。
+ * 金额 Long 最小单位。</p>
  */
 @Slf4j
 @Service
@@ -49,16 +62,19 @@ public class UserWalletServiceImpl extends ServiceImpl<UserWalletMapper, UserWal
 
     private static final String COIN_NATIVE = "COIN";
     private static final String COIN_TOKEN = "TOKEN";
+    private static final Pattern ADDRESS_PATTERN = Pattern.compile("^0x[0-9a-fA-F]{40}$");
 
     private final ChainProperties chainProperties;
     private final CoinService coinService;
     private final ChainRegistry chainRegistry;
+    private final ChainService chainService;
 
     public UserWalletServiceImpl(ChainProperties chainProperties, CoinService coinService,
-                                 ChainRegistry chainRegistry) {
+                                 ChainRegistry chainRegistry, ChainService chainService) {
         this.chainProperties = chainProperties;
         this.coinService = coinService;
         this.chainRegistry = chainRegistry;
+        this.chainService = chainService;
     }
 
     @Override
@@ -188,6 +204,114 @@ public class UserWalletServiceImpl extends ServiceImpl<UserWalletMapper, UserWal
             }
         }
         return result;
+    }
+
+    @Override
+    public WalletSendResultVO send(Long userId, Long walletId, WalletSendRequest req) {
+        UserWallet w = getById(userId, walletId);
+        if (!ADDRESS_PATTERN.matcher(req.getToAddress()).matches()) {
+            throw new BusinessException("转账目标地址非法（需 0x + 40 位 hex）");
+        }
+        if (req.getAmount() == null || req.getAmount() <= 0) {
+            throw new BusinessException("转账金额必须大于 0");
+        }
+        Coin coin = coinService.getBySymbol(req.getSymbol());
+        if (coin == null) {
+            throw new NotFoundException("币种不存在: " + req.getSymbol());
+        }
+        if (!coin.getChainCode().equalsIgnoreCase(w.getChainCode())) {
+            throw new BusinessException("币种与钱包所在链不匹配");
+        }
+        Chain chain = chainService.getByChainCode(w.getChainCode());
+        if (chain == null) {
+            throw new NotFoundException("链不存在: " + w.getChainCode());
+        }
+        Web3j web3j = chainRegistry.get(w.getChainCode());
+        if (web3j == null) {
+            throw new BusinessException("链未注册: " + w.getChainCode());
+        }
+
+        // 解密钱包私钥（AES-GCM），明文仅内存使用
+        String privateKey = decryptPrivateKey(w);
+        Credentials credentials = Credentials.create(privateKey);
+        String fromAddr = credentials.getAddress();
+
+        // 组装交易（与提现广播一致）
+        BigInteger nonce;
+        try {
+            nonce = web3j.ethGetTransactionCount(fromAddr, DefaultBlockParameterName.PENDING)
+                    .send().getTransactionCount();
+        } catch (IOException e) {
+            throw new BusinessException("获取 nonce 失败: " + e.getMessage());
+        }
+        BigInteger gasPrice = clampGasPrice(web3j, chain);
+        boolean token = COIN_TOKEN.equalsIgnoreCase(coin.getCoinType());
+        BigInteger gasLimit = token ? BigInteger.valueOf(100_000) : BigInteger.valueOf(21_000);
+        BigInteger chainId = chain.getChainId() == null ? BigInteger.ONE : BigInteger.valueOf(chain.getChainId());
+
+        RawTransaction rawTx;
+        if (token) {
+            Function function = new Function("transfer",
+                    Arrays.asList(new Address(req.getToAddress()), new Uint256(BigInteger.valueOf(req.getAmount()))),
+                    List.of());
+            String data = FunctionEncoder.encode(function);
+            rawTx = RawTransaction.createTransaction(nonce, gasPrice, gasLimit,
+                    coin.getContractAddress(), BigInteger.ZERO, data);
+        } else {
+            rawTx = RawTransaction.createEtherTransaction(nonce, gasPrice, gasLimit,
+                    req.getToAddress(), BigInteger.valueOf(req.getAmount()));
+        }
+
+        byte[] signed = TransactionEncoder.signMessage(rawTx, chainId.longValue(), credentials);
+        String rawHex = Numeric.toHexString(signed);
+        EthSendTransaction resp;
+        try {
+            resp = web3j.ethSendRawTransaction(rawHex).send();
+        } catch (IOException e) {
+            throw new BusinessException("广播异常: " + e.getMessage());
+        }
+        if (resp.hasError()) {
+            throw new BusinessException("广播失败: " + resp.getError().getMessage());
+        }
+        String txHash = resp.getTransactionHash();
+        if (txHash == null) {
+            throw new BusinessException("广播返回空 hash");
+        }
+        log.info("[self-wallet] 转账广播 user={} wallet={} symbol={} from={} to={} amount={} tx={}",
+                userId, walletId, coin.getSymbol(), fromAddr, req.getToAddress(), req.getAmount(), txHash);
+
+        WalletSendResultVO vo = new WalletSendResultVO();
+        vo.setWalletId(walletId);
+        vo.setChainCode(w.getChainCode());
+        vo.setSymbol(coin.getSymbol());
+        vo.setFromAddress(fromAddr);
+        vo.setToAddress(req.getToAddress());
+        vo.setAmount(req.getAmount());
+        vo.setTxHash(txHash);
+        return vo;
+    }
+
+    /** 解密钱包私钥（AES-GCM），返回无 0x 的 hex。 */
+    private String decryptPrivateKey(UserWallet w) {
+        if (w.getPrivateKeyEnc() == null || w.getPrivateKeyEnc().isBlank()) {
+            throw new BusinessException("该钱包无可用的私钥");
+        }
+        return AesGcmCrypto.decrypt(w.getPrivateKeyEnc(), encryptSecret());
+    }
+
+    private BigInteger clampGasPrice(Web3j web3j, Chain chain) {
+        try {
+            BigInteger gp = web3j.ethGasPrice().send().getGasPrice();
+            if (chain.getMinGasPrice() != null && gp.compareTo(BigInteger.valueOf(chain.getMinGasPrice())) < 0) {
+                return BigInteger.valueOf(chain.getMinGasPrice());
+            }
+            if (chain.getMaxGasPrice() != null && gp.compareTo(BigInteger.valueOf(chain.getMaxGasPrice())) > 0) {
+                return BigInteger.valueOf(chain.getMaxGasPrice());
+            }
+            return gp;
+        } catch (Exception e) {
+            return BigInteger.valueOf(1_000_000_000L);
+        }
     }
 
     private WalletBalanceVO toBalanceVO(UserWallet w, Coin coin, BigInteger balance) {

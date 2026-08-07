@@ -3,6 +3,8 @@ package com.web3.exchange.chain.controller;
 import com.web3.exchange.chain.dto.WalletBalanceVO;
 import com.web3.exchange.chain.dto.WalletCreateRequest;
 import com.web3.exchange.chain.dto.WalletImportRequest;
+import com.web3.exchange.chain.dto.WalletSendRequest;
+import com.web3.exchange.chain.dto.WalletSendResultVO;
 import com.web3.exchange.chain.dto.WalletVO;
 import com.web3.exchange.chain.entity.UserWallet;
 import com.web3.exchange.chain.service.UserWalletService;
@@ -75,5 +77,13 @@ public class WalletController {
     public Result<List<WalletBalanceVO>> balance(@RequestParam("userId") Long userId,
                                                  @PathVariable("id") Long id) {
         return Result.success(userWalletService.balance(userId, id));
+    }
+
+    @Operation(summary = "钱包链上转账（离线签名 + 广播）")
+    @PostMapping("/{id}/send")
+    public Result<WalletSendResultVO> send(@RequestParam("userId") Long userId,
+                                           @PathVariable("id") Long id,
+                                           @RequestBody WalletSendRequest req) {
+        return Result.success(userWalletService.send(userId, id, req));
     }
 }
