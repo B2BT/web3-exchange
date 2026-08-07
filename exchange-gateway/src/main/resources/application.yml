@@ -80,6 +80,11 @@ spring:
           uri: lb://exchange-admin
           predicates:
             - Path=/api/admin/**
+        # margin 服务（杠杆现货）：无 context-path，Controller 映射 /api/margin/**
+        - id: margin-service
+          uri: lb://exchange-margin
+          predicates:
+            - Path=/api/margin/**
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market
