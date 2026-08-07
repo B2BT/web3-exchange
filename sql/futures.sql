@@ -79,3 +79,26 @@ CREATE TABLE IF NOT EXISTS t_mark_price (
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_symbol (symbol)
 ) ENGINE=InnoDB COMMENT='合约标记价格';
+
+-- 合约订单
+CREATE TABLE IF NOT EXISTS t_futures_order (
+  id BIGINT PRIMARY KEY,
+  order_no VARCHAR(40) NOT NULL COMMENT '业务单号',
+  user_id BIGINT NOT NULL,
+  symbol VARCHAR(32) NOT NULL,
+  side INT NOT NULL COMMENT '1=开多 2=开空 3=平多 4=平空',
+  order_type INT NOT NULL DEFAULT 1 COMMENT '1=限价 2=市价',
+  price BIGINT NOT NULL DEFAULT 0 COMMENT '限价(最小单位,市价为0)',
+  quantity BIGINT NOT NULL COMMENT '数量(最小单位)',
+  remaining BIGINT NOT NULL DEFAULT 0 COMMENT '剩余未成交量',
+  filled BIGINT NOT NULL DEFAULT 0 COMMENT '已成交量',
+  avg_price BIGINT NOT NULL DEFAULT 0 COMMENT '成交均价',
+  leverage INT NOT NULL DEFAULT 10 COMMENT '下单杠杆',
+  margin_mode INT NOT NULL DEFAULT 1 COMMENT '保证金模式 1=逐仓 2=全仓',
+  status INT NOT NULL DEFAULT 0 COMMENT '0挂单 1部分成交 2完全成交 3已取消 4已拒绝',
+  version INT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_order_no (order_no),
+  KEY idx_user_symbol (user_id, symbol, status)
+) ENGINE=InnoDB COMMENT='永续合约订单';

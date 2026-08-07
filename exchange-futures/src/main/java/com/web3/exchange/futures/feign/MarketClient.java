@@ -4,7 +4,8 @@ import com.web3.exchange.common.model.Result;
 import com.web3.exchange.futures.dto.SpotTickerVO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.List;
 
 /**
  * 现货行情内部客户端（Feign，对接 exchange-market 的公开 /api/market/ticker）。
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 @FeignClient(name = "exchange-market", path = "/api/market")
 public interface MarketClient {
 
-    /** 单交易对 ticker（现货价，如 BTC/USDT）。 */
-    @GetMapping("/ticker/{symbol:.+}")
-    Result<SpotTickerVO> ticker(@PathVariable("symbol") String symbol);
+    /** 全市场 ticker 列表（现货价，如 BTC/USDT）。 */
+    @GetMapping("/ticker/list")
+    Result<List<SpotTickerVO>> tickerList();
 }

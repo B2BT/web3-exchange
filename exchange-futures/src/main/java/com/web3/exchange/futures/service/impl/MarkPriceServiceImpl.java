@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 
 /**
  * 标记价格服务实现。
@@ -69,13 +70,32 @@ public class MarkPriceServiceImpl implements MarkPriceService {
             String base = c.getBase();
             String quote = c.getQuote();
             String spotSymbol = base + "/" + quote;
-            Result<SpotTickerVO> res = marketClient.ticker(spotSymbol);
-            if (res == null || res.getData() == null || res.getData().getLastPrice() == null) {
+            Result<List<SpotTickerVO>> res = marketClient.tickerList();
+            if (res == null || res.getData() == null) {
                 return null;
             }
-            return new BigDecimal(res.getData().getLastPrice()).longValue();
+            for (SpotTickerVO tk : res.getData()) {
+                if (spotSymbol.equals(tk.getSymbol())) {
+                    // 优先 lastPrice；异常值(≤0或明显过小)用 high24h
+                    Long last = parsePrice(tk.getLastPrice());
+                    if (last != null && last > 0) return last;
+                    Long high = parsePrice(tk.getHigh24h());
+                    if (high != null && high > 0) return high;
+                    return null;
+                }
+            }
+            return null;
         } catch (Exception e) {
             log.warn("拉取现货价失败 symbol={}: {}", c.getSymbol(), e.getMessage());
+            return null;
+        }
+    }
+
+    private Long parsePrice(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return new BigDecimal(s).longValue();
+        } catch (Exception e) {
             return null;
         }
     }
