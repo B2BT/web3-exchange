@@ -3,6 +3,8 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import ThreeOrb from '@/components/effects/ThreeOrb.vue'
+import ParticleBackground from '@/components/effects/ParticleBackground.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -82,8 +84,11 @@ onMounted(loadCaptcha)
 
 <template>
   <div class="login-page">
-    <div class="login-card g-card">
-      <div class="logo">Web3 交易所</div>
+    <!-- 3D 旋转霓虹球体背景 -->
+    <ThreeOrb />
+    <ParticleBackground />
+    <div class="login-card g-card tilt3d neon-edge">
+      <div class="logo floaty">Web3 交易所</div>
       <div class="subtitle">去中心化数字资产交易平台</div>
 
       <el-form
@@ -143,6 +148,8 @@ onMounted(loadCaptcha)
 <style scoped>
 .login-page {
   height: 100vh;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -151,6 +158,8 @@ onMounted(loadCaptcha)
   padding: 20px;
 }
 .login-card {
+  position: relative;
+  z-index: 2;
   width: 400px;
   background: var(--glass-bg-strong);
   border-radius: var(--radius);

@@ -87,7 +87,7 @@ onMounted(loadAll)
       <h4 class="section-title">质押产品</h4>
       <el-row :gutter="16" v-loading="loading">
         <el-col :span="8" v-for="p in products" :key="p.id">
-          <el-card shadow="never" class="g-card product-card">
+          <el-card shadow="never" class="g-card product-card tilt3d scan-wrap">
             <div class="p-name">{{ p.name }}</div>
             <div class="p-rate">
               <span class="rate-num">{{ ratePct(p.annualRateBp) }}</span>

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import ParticleBackground from '@/components/effects/ParticleBackground.vue'
 </script>
 
 <template>
   <div class="app-root">
+    <!-- 装饰层：粒子背景 -->
+    <ParticleBackground />
     <!-- 装饰层：网格线 -->
     <div class="app-bg app-bg-grid" aria-hidden="true"></div>
     <!-- 装饰层：顶部霓虹光晕 -->

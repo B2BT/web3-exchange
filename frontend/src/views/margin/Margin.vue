@@ -154,7 +154,7 @@ onMounted(() => {
       <!-- 账户卡片 -->
       <el-row :gutter="16" v-loading="accountLoading" style="margin-bottom: 20px">
         <el-col :span="6">
-          <el-card shadow="never" class="g-card stat-card">
+          <el-card shadow="never" class="g-card stat-card tilt3d">
             <div class="stat-label">抵押 Collateral</div>
             <div class="stat-value num">{{ human(account?.collateral, SYMBOL) }} {{ SYMBOL }}</div>
           </el-card>
