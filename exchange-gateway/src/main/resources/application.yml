@@ -74,6 +74,11 @@ spring:
           uri: lb://exchange-monitor
           predicates:
             - Path=/api/monitor/**
+        # ticket 管理接口（工单管理，/api/admin/ticket/** 精确路由到 exchange-ticket，须在泛化的 admin-service 之前）
+        - id: admin-ticket-service
+          uri: lb://exchange-ticket
+          predicates:
+            - Path=/api/admin/ticket/**
         # admin 服务（管理平台）：无 context-path，Controller 映射 /api/admin/**（需 ADMIN 角色，域内校验 role）
         # 该路由不在 AuthFilter 白名单内，须携带合法 JWT（网关注入 X-User-Id），admin 域据此查 role 拦截非管理员。
         - id: admin-service
@@ -95,6 +100,11 @@ spring:
           uri: lb://exchange-risk
           predicates:
             - Path=/api/risk/**
+        # ticket 服务（客服工单）：无 context-path，Controller 映射 /api/ticket/**
+        - id: ticket-service
+          uri: lb://exchange-ticket
+          predicates:
+            - Path=/api/ticket/**
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market

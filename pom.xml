@@ -191,6 +191,7 @@
         <module>exchange-margin</module>
         <module>exchange-staking</module>
         <module>exchange-risk</module>
+        <module>exchange-ticket</module>
     </modules>
 
 </project>
