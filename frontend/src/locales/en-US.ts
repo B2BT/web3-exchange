@@ -109,6 +109,7 @@ export default {
     deposit: 'Deposit',
     withdraw: 'Withdraw',
     ledger: 'Ledger',
+    fiatTotal: 'Fiat Total',
   },
   wallet: {
     title: 'Wallet',

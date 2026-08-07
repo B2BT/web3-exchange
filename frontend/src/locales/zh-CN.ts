@@ -109,6 +109,7 @@ export default {
     deposit: '充值',
     withdraw: '提现',
     ledger: '资金流水',
+    fiatTotal: '法币总资产',
   },
   wallet: {
     title: 'Web3钱包',

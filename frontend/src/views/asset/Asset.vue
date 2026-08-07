@@ -65,10 +65,53 @@ async function loadAccounts() {
   overviewLoading.value = true
   try {
     accounts.value = await assetApi.accounts(userId.value)
+    await loadFiatPrices()
   } finally {
     overviewLoading.value = false
   }
 }
+
+// ---------- 多币种法币折算（P3.4） ----------
+/** 法币选择 */
+const fiat = ref<'USD' | 'CNY' | 'EUR'>('USD')
+/** 演示汇率：1 USDT 对应多少法币 */
+const FIAT_RATE: Record<string, number> = { USD: 1, CNY: 7.2, EUR: 0.92 }
+/** 币种 → 对 USDT 价格（来自行情 ticker，BTC/ETH；USDT=1） */
+const usdPrices = ref<Record<string, number>>({ BTC: 60000, ETH: 2500, USDT: 1 })
+/** 法币总资产（人读值） */
+const fiatTotal = ref(0)
+
+/** 拉取实时行情价折算（走公开 /api/market/tickers） */
+async function loadFiatPrices() {
+  try {
+    const { tickerList } = await import('@/api/market')
+    const list = await tickerList()
+    const map: Record<string, number> = { USDT: 1 }
+    for (const tk of list ?? []) {
+      const symbol = String(tk.symbol ?? '')
+      const lastPrice = Number(tk.lastPrice)
+      if (symbol === 'BTC/USDT' && Number.isFinite(lastPrice)) map.BTC = lastPrice / 1e8
+      else if (symbol === 'ETH/USDT' && Number.isFinite(lastPrice)) map.ETH = lastPrice / 1e8
+    }
+    usdPrices.value = map
+  } catch {
+    // 拉取失败则用默认演示价
+  }
+  computeFiatTotal()
+}
+
+/** 计算法币总资产：Σ 币种 total(人读) × 币种对USDT价 × 法币汇率 */
+function computeFiatTotal() {
+  let usdSum = 0
+  for (const acc of accounts.value) {
+    if (!acc.symbol) continue
+    const human = Number(formatLong(acc.total, coinDecimals(acc.symbol))) || 0
+    usdSum += human * (usdPrices.value[acc.symbol] ?? 0)
+  }
+  fiatTotal.value = usdSum * FIAT_RATE[fiat.value]
+}
+
+watch(fiat, computeFiatTotal)
 
 // ---------- 充值地址 ----------
 const dep = reactive({ symbol: 'USDT' as string, chainCode: 'TRON' as string })
@@ -232,13 +275,24 @@ watch(activeTab, (tab) => {
       <template #header>
         <div class="card-header">
           <span>{{ t('asset.title') }}</span>
-          <el-button size="small" :loading="overviewLoading" @click="loadAccounts">{{ t('common.refresh') }}</el-button>
+          <div class="fiat-bar">
+            <el-select v-model="fiat" size="small" style="width: 100px" @change="computeFiatTotal">
+              <el-option label="USD" value="USD" />
+              <el-option label="CNY" value="CNY" />
+              <el-option label="EUR" value="EUR" />
+            </el-select>
+            <el-button size="small" :loading="overviewLoading" @click="loadAccounts">{{ t('common.refresh') }}</el-button>
+          </div>
         </div>
       </template>
 
       <el-tabs v-model="activeTab">
         <!-- 资产总览 -->
         <el-tab-pane :label="t('asset.overview')" name="overview" lazy>
+          <div class="fiat-total">
+            <span class="fiat-label">{{ t('asset.fiatTotal') }} ({{ fiat }})</span>
+            <span class="fiat-value num">{{ fiatTotal.toLocaleString(undefined, { maximumFractionDigits: 2 }) }}</span>
+          </div>
           <el-table v-loading="overviewLoading" :data="accounts" stripe>
             <el-table-column prop="symbol" :label="t('asset.coin')" width="140" />
             <el-table-column :label="t('asset.available')">
@@ -424,6 +478,27 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.fiat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fiat-total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 0 14px;
+}
+.fiat-label {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.fiat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent, #3b82f6);
+  letter-spacing: 0.5px;
 }
 .addr-text {
   word-break: break-all;
