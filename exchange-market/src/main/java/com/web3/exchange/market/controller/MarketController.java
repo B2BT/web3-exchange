@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 行情对外 REST 接口（/api/market/**，经网关路由，无 context-path 直接转发）。
@@ -104,5 +106,21 @@ public class MarketController {
         vo.setVolume24h(t.getVolume24h());
         vo.setQuoteVolume24h(t.getQuoteVolume24h());
         return vo;
+    }
+
+    /** 真实订单簿深度（Binance @depth20 实时盘口）。 */
+    @GetMapping("/depth")
+    public Result<Map<String, Object>> depth(@RequestParam("symbol") String symbol) {
+        var snap = aggregator.getExternalDepth(symbol);
+        if (snap == null) {
+            return Result.notFound("暂无深度: " + symbol);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("symbol", symbol);
+        out.put("bids", snap.getBids().stream()
+                .map(l -> Map.of("price", l.getPrice(), "quantity", l.getQuantity())).toList());
+        out.put("asks", snap.getAsks().stream()
+                .map(l -> Map.of("price", l.getPrice(), "quantity", l.getQuantity())).toList());
+        return Result.success(out);
     }
 }

@@ -49,34 +49,61 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
     @Value("${server-settings.external-price.quote-decimals:8}")
     private int quoteDecimals;
 
-    private WebSocketSession session;
+    /** 已建立的 WS 会话集合（分连接订阅，避免单连接流数超限）。 */
+    private final java.util.concurrent.CopyOnWriteArrayList<WebSocketSession> sessions = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     @PostConstruct
     public void start() {
-        // 启动时连接；失败由重连机制兜底
+        // 连接所有订阅连接；失败由重连机制兜底
         try {
-            connect();
+            connectAll();
         } catch (Exception e) {
             log.warn("[binance-ws] 初次连接失败，进入重连: {}", e.getMessage());
             scheduleReconnect();
         }
     }
 
-    private void connect() throws Exception {
-        if (connected.get()) return;
+    /** 建立全部订阅连接（ticker+kline 一连接、depth 一连接，避免超长 URL）。 */
+    private void connectAll() throws Exception {
+        connect(buildMarketUrl(), "market");   // ticker + kline
+        connect(buildDepthUrl(), "depth");     // depth20
+    }
+
+    private void connect(String url, String label) throws Exception {
+        try {
+            WebSocketSession s = client.execute(this, url).get(20, TimeUnit.SECONDS);
+            sessions.add(s);
+            connected.set(true);
+            log.info("[binance-ws] 已连接 {} 订阅: {}", label, url.length() > 60 ? url.substring(0, 60) + "…" : url);
+        } catch (Exception e) {
+            log.warn("[binance-ws] {} 连接失败: {}", label, e.getMessage());
+            throw e;
+        }
+    }
+
+    private String buildMarketUrl() {
         StringBuilder url = new StringBuilder(WS_URL);
         boolean first = true;
         for (String base : STREAMS) {
-            if (!first) url.append("/"); // Binance 组合流用 / 分隔
+            if (!first) url.append("/");
             url.append(base).append("@ticker");
             for (String iv : KLINE_INTERVALS) {
                 url.append("/").append(base).append("@kline_").append(iv);
             }
             first = false;
         }
-        session = client.execute(this, url.toString()).get(20, TimeUnit.SECONDS);
-        connected.set(true);
-        log.info("[binance-ws] 已连接 Binance 实时行情流");
+        return url.toString();
+    }
+
+    private String buildDepthUrl() {
+        StringBuilder url = new StringBuilder(WS_URL);
+        boolean first = true;
+        for (String base : STREAMS) {
+            if (!first) url.append("/");
+            url.append(base).append("@depth20");
+            first = false;
+        }
+        return url.toString();
     }
 
     @Override
@@ -90,6 +117,9 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
                 handleTicker(data);
             } else if ("kline".equals(e)) {
                 handleKline(data.path("k"));
+            } else if (data.has("bids") && data.has("asks")) {
+                // depth20 快照流：data 含 lastUpdateId/bids/asks，symbol 取自 stream 名
+                handleDepth(root.path("stream").asText(), data);
             }
         } catch (Exception ex) {
             log.debug("[binance-ws] 解析消息失败: {}", ex.getMessage());
@@ -122,6 +152,28 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
         aggregator.applyExternalTrade(symbol, t.lastPrice, 100000000L);
     }
 
+    /** 处理 @depth20 订单簿快照：data.bids/asks 各档[price,qty]。symbol 取自 stream 名(btcusdt@depth20)。 */
+    private void handleDepth(String stream, JsonNode d) {
+        String base = stream.substring(0, stream.indexOf('@'));
+        String symbol = toSystemSymbol(base);
+        if (symbol == null) return;
+        java.util.List<long[]> bids = parseLevels(d.path("bids"));
+        java.util.List<long[]> asks = parseLevels(d.path("asks"));
+        aggregator.updateExternalDepth(symbol, bids, asks);
+    }
+
+    private java.util.List<long[]> parseLevels(JsonNode arr) {
+        java.util.List<long[]> out = new java.util.ArrayList<>();
+        if (arr == null || !arr.isArray()) return out;
+        for (JsonNode lvl : arr) {
+            if (!lvl.isArray() || lvl.size() < 2) continue;
+            long price = toMin(lvl.get(0).asText());
+            long qty = toMin(lvl.get(1).asText());
+            out.add(new long[]{price, qty});
+        }
+        return out;
+    }
+
     private void handleKline(JsonNode k) {
         String symbol = toSystemSymbol(k.path("s").asText());
         if (symbol == null) return;
@@ -147,7 +199,7 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
     private void scheduleReconnect() {
         reconnectExecutor.schedule(() -> {
             try {
-                connect();
+                connectAll();
             } catch (Exception e) {
                 log.warn("[binance-ws] 重连失败，稍后重试: {}", e.getMessage());
                 scheduleReconnect();
@@ -159,9 +211,10 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
     public void shutdown() {
         connected.set(false);
         reconnectExecutor.shutdownNow();
-        if (session != null) {
-            try { session.close(); } catch (Exception ignored) {}
+        for (WebSocketSession s : sessions) {
+            try { s.close(); } catch (Exception ignored) {}
         }
+        sessions.clear();
     }
 
     /** Binance 小写 symbol（btcusdt）→ 系统 symbol（BTC/USDT）；不支持返回 null。 */

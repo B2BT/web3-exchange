@@ -134,6 +134,36 @@ public class MarketAggregator {
     /** symbol -> 权威 24h ticker 快照（外部真实行情覆盖，优先级高于 K线推导） */
     private final ConcurrentHashMap<String, Ticker> externalTickers = new ConcurrentHashMap<>();
 
+    /** symbol -> 真实订单簿深度（Binance @depth20，每档 {price, qty} 最小单位） */
+    private final ConcurrentHashMap<String, DepthSnapshot> externalDepths = new ConcurrentHashMap<>();
+
+    /** 订单簿深度快照（Level 数组，价格/数量均为 Long 最小单位）。 */
+    @lombok.Data
+    public static class DepthSnapshot {
+        private final java.util.List<Level> bids = new java.util.ArrayList<>();
+        private final java.util.List<Level> asks = new java.util.ArrayList<>();
+        private long updateId;
+
+        @lombok.Data
+        public static class Level {
+            private final long price;
+            private final long quantity;
+        }
+    }
+
+    /** 注入真实订单簿深度（Binance @depth20）。覆盖同 symbol 快照。 */
+    public void updateExternalDepth(String symbol, java.util.List<long[]> bids, java.util.List<long[]> asks) {
+        DepthSnapshot snap = new DepthSnapshot();
+        for (long[] b : bids) snap.getBids().add(new DepthSnapshot.Level(b[0], b[1]));
+        for (long[] a : asks) snap.getAsks().add(new DepthSnapshot.Level(a[0], a[1]));
+        externalDepths.put(symbol, snap);
+    }
+
+    /** 读取某交易对真实深度（无则 null）。 */
+    public DepthSnapshot getExternalDepth(String symbol) {
+        return externalDepths.get(symbol);
+    }
+
     /**
      * 注入一笔外部完整 K线（来自真实行情源，如 Binance kline 流）。
      * <p>直接写入 store（幂等：同 (symbol, period, openTime) 覆盖），比从成交聚合更精确。</p>

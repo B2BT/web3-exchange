@@ -61,10 +61,10 @@ export interface DepthData {
   asks?: DepthLevel[]
 }
 
-/** 订单簿深度（存于 order 域，市场数据公开） */
+/** 订单簿深度（真实行情源，Binance 盘口，公开市场数据） */
 export function depth(symbol: string, limit = 20): Promise<DepthData> {
   return request<DepthData>({
-    url: `/order/depth?symbol=${encodeURIComponent(symbol)}`,
+    url: `/market/depth?symbol=${encodeURIComponent(symbol)}`,
     method: 'get',
     params: { limit },
   })
