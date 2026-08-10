@@ -65,20 +65,19 @@ public class LiquidationServiceImpl implements LiquidationService {
                 new LambdaQueryWrapper<SwapContract>().eq(SwapContract::getSymbol, pos.getSymbol()).last("LIMIT 1"));
         if (c == null) return false;
 
-        // 未实现盈亏（用标记价）
+        // 未实现盈亏（用标记价）；(价差 × 数量 ÷ 1e8)
         long upnl;
         if (pos.getSide() == 1) {
-            upnl = BigDecimal.valueOf(mark).subtract(BigDecimal.valueOf(pos.getEntryPrice()))
-                    .multiply(BigDecimal.valueOf(pos.getSize())).longValue();
+            upnl = notional(pos.getSize(), mark - pos.getEntryPrice());
         } else {
-            upnl = BigDecimal.valueOf(pos.getEntryPrice()).subtract(BigDecimal.valueOf(mark))
-                    .multiply(BigDecimal.valueOf(pos.getSize())).longValue();
+            upnl = notional(pos.getSize(), pos.getEntryPrice() - mark);
         }
         // 账户权益 = 逐仓保证金 + 未实现盈亏
         long equity = (pos.getIsolatedMargin() == null ? 0 : pos.getIsolatedMargin()) + upnl;
         // 名义价值 × MMR（MMR 基点：5000 = 50%）
-        BigDecimal notional = BigDecimal.valueOf(pos.getSize()).multiply(BigDecimal.valueOf(mark));
-        BigDecimal maintenance = notional.multiply(BigDecimal.valueOf(c.getMmr() == null ? 5000 : c.getMmr()))
+        long notionalVal = notional(pos.getSize(), mark);
+        BigDecimal maintenance = BigDecimal.valueOf(notionalVal)
+                .multiply(BigDecimal.valueOf(c.getMmr() == null ? 5000 : c.getMmr()))
                 .divide(BigDecimal.valueOf(10000), 0, RoundingMode.HALF_UP);
         boolean trigger = BigDecimal.valueOf(equity).compareTo(maintenance) < 0;
         if (trigger) {
@@ -93,14 +92,12 @@ public class LiquidationServiceImpl implements LiquidationService {
                 new LambdaQueryWrapper<MarkPrice>().eq(MarkPrice::getSymbol, pos.getSymbol()).last("LIMIT 1"));
         long mark = mp != null && mp.getMarkPrice() != null ? mp.getMarkPrice() : pos.getEntryPrice();
 
-        // 结算盈亏
+        // 结算盈亏 (价差 × 数量 ÷ 1e8)
         long pnl;
         if (pos.getSide() == 1) {
-            pnl = BigDecimal.valueOf(mark).subtract(BigDecimal.valueOf(pos.getEntryPrice()))
-                    .multiply(BigDecimal.valueOf(pos.getSize())).longValue();
+            pnl = notional(pos.getSize(), mark - pos.getEntryPrice());
         } else {
-            pnl = BigDecimal.valueOf(pos.getEntryPrice()).subtract(BigDecimal.valueOf(mark))
-                    .multiply(BigDecimal.valueOf(pos.getSize())).longValue();
+            pnl = notional(pos.getSize(), pos.getEntryPrice() - mark);
         }
         // 平仓后剩余保证金 = isolated_margin + pnl（可为负，从账户扣减）
         long remainingMargin = (pos.getIsolatedMargin() == null ? 0 : pos.getIsolatedMargin()) + pnl;
@@ -129,5 +126,16 @@ public class LiquidationServiceImpl implements LiquidationService {
         SwapContract c = contractMapper.selectOne(
                 new LambdaQueryWrapper<SwapContract>().eq(SwapContract::getSymbol, pos.getSymbol()).last("LIMIT 1"));
         return c != null ? c.getQuote() : "USDT";
+    }
+
+    /**
+     * 名义金额（USDT 最小单位）= 币数量最小单位 × 价格最小单位 / 1e8。
+     * quantity 与 price 都是 1e-8 尺度最小单位，需 ÷1e8 还原为 USDT 最小单位。
+     */
+    private long notional(long qtyMin, long priceMin) {
+        return BigDecimal.valueOf(qtyMin)
+                .multiply(BigDecimal.valueOf(priceMin))
+                .divide(BigDecimal.valueOf(1_0000_0000L), 0, RoundingMode.HALF_UP)
+                .longValue();
     }
 }

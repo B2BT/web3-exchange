@@ -73,9 +73,12 @@ public class FundingServiceImpl implements FundingService {
 
         int count = 0;
         for (FuturesPosition pos : positions) {
-            // 名义价值 = size × mark；结算额 = 名义价值 × rate
-            BigDecimal notional = BigDecimal.valueOf(pos.getSize()).multiply(BigDecimal.valueOf(mark));
-            BigDecimal fee = notional.multiply(rate).setScale(0, RoundingMode.HALF_UP);
+            // 名义价值 = size × mark ÷ 1e8；结算额 = 名义价值 × rate
+            long notionalVal = BigDecimal.valueOf(pos.getSize())
+                    .multiply(BigDecimal.valueOf(mark))
+                    .divide(BigDecimal.valueOf(1_0000_0000L), 0, RoundingMode.HALF_UP)
+                    .longValue();
+            BigDecimal fee = BigDecimal.valueOf(notionalVal).multiply(rate).setScale(0, RoundingMode.HALF_UP);
             long feeLong = fee.longValue();
             // 多头支付给空头：rate>0 时多头扣、空头加
             long amount = pos.getSide() == 1 ? -feeLong : feeLong;

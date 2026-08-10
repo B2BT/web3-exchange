@@ -88,9 +88,9 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
         if (isOpen) {
             long refPrice = limitPrice > 0 ? limitPrice : (markPriceService.getMarkPrice(dto.getSymbol()) == null
                     ? fallbackPrice(contract) : markPriceService.getMarkPrice(dto.getSymbol()));
-            long margin = BigDecimal.valueOf(qtyMin)
-                    .multiply(BigDecimal.valueOf(refPrice))
-                    .divide(BigDecimal.valueOf(leverage), 0, RoundingMode.HALF_UP).longValue();
+            // 保证金 = 名义金额 / 杠杆；名义 = qtyMin×priceMin/1e8
+            long margin = notional(qtyMin, refPrice)
+                    / leverage;
             accountService.addPositionMargin(userId, contract.getQuote(), margin);
         }
 
@@ -143,9 +143,8 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
                     pos.setEntryPrice(avg);
                 }
                 // 累加该笔成交的保证金（账户已在开单时冻结）
-                long fillMargin = BigDecimal.valueOf(f.getQuantity())
-                        .multiply(BigDecimal.valueOf(f.getPrice()))
-                        .divide(BigDecimal.valueOf(order.getLeverage()), 0, RoundingMode.HALF_UP).longValue();
+                long fillMargin = notional(f.getQuantity(), f.getPrice())
+                        / order.getLeverage();
                 pos.setIsolatedMargin((pos.getIsolatedMargin() == null ? 0 : pos.getIsolatedMargin()) + fillMargin);
                 pos.setSize(newSize);
                 pos.setUnrealizedPnl(computeUnrealized(pos, f.getPrice()));
@@ -153,12 +152,10 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
                 // 平仓：减少持仓并结算盈亏
                 long closeQty = Math.min(f.getQuantity(), pos.getSize());
                 long pnl;
-                if (posSide == 1) { // 多单平仓：(卖价 - 开仓价) × 数量
-                    pnl = BigDecimal.valueOf(f.getPrice()).subtract(BigDecimal.valueOf(pos.getEntryPrice()))
-                            .multiply(BigDecimal.valueOf(closeQty)).longValue();
-                } else { // 空单平仓：(开仓价 - 买价) × 数量
-                    pnl = BigDecimal.valueOf(pos.getEntryPrice()).subtract(BigDecimal.valueOf(f.getPrice()))
-                            .multiply(BigDecimal.valueOf(closeQty)).longValue();
+                if (posSide == 1) { // 多单平仓：(卖价 - 开仓价) × 数量 ÷ 1e8
+                    pnl = notional(closeQty, f.getPrice() - pos.getEntryPrice());
+                } else { // 空单平仓：(开仓价 - 买价) × 数量 ÷ 1e8
+                    pnl = notional(closeQty, pos.getEntryPrice() - f.getPrice());
                 }
                 long newSize = pos.getSize() - closeQty;
                 // 释放该部分保证金
@@ -188,11 +185,9 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
     private long computeUnrealized(FuturesPosition pos, long mark) {
         long pnl;
         if (pos.getSide() == 1) {
-            pnl = BigDecimal.valueOf(mark).subtract(BigDecimal.valueOf(pos.getEntryPrice()))
-                    .multiply(BigDecimal.valueOf(pos.getSize())).longValue();
+            pnl = notional(pos.getSize(), mark - pos.getEntryPrice());
         } else {
-            pnl = BigDecimal.valueOf(pos.getEntryPrice()).subtract(BigDecimal.valueOf(mark))
-                    .multiply(BigDecimal.valueOf(pos.getSize())).longValue();
+            pnl = notional(pos.getSize(), pos.getEntryPrice() - mark);
         }
         return pnl;
     }
@@ -241,6 +236,18 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
         return "BTC".equals(c.getBase()) ? 6000000000000L : 250000000000L;
     }
 
+    /**
+     * 名义金额（USDT 最小单位）= 币数量最小单位 × 价格最小单位 / 1e8。
+     * <p>quantity 与 price 都是 1e-8 尺度最小单位，相乘得到的是「1e-16 币·价」，
+     * 需 ÷1e8(价格精度) 还原为 USDT 最小单位(1e-8)。</p>
+     */
+    private long notional(long qtyMin, long priceMin) {
+        return BigDecimal.valueOf(qtyMin)
+                .multiply(BigDecimal.valueOf(priceMin))
+                .divide(BigDecimal.valueOf(1_0000_0000L), 0, RoundingMode.HALF_UP)
+                .longValue();
+    }
+
     private long toMinUnit(String val, Integer decimals) {
         if (val == null || val.isBlank()) return 0;
         int dec = decimals == null ? 8 : decimals;
@@ -268,9 +275,8 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
                 SwapContract c = contractMapper.selectOne(
                         new LambdaQueryWrapper<SwapContract>().eq(SwapContract::getSymbol, symbol).last("LIMIT 1"));
                 long refPrice = order.getPrice() > 0 ? order.getPrice() : fallbackPrice(c);
-                long margin = BigDecimal.valueOf(order.getRemaining())
-                        .multiply(BigDecimal.valueOf(refPrice))
-                        .divide(BigDecimal.valueOf(order.getLeverage()), 0, RoundingMode.HALF_UP).longValue();
+                // 释放保证金 = 剩余未成交名义 / 杠杆
+                long margin = notional(order.getRemaining(), refPrice) / order.getLeverage();
                 accountService.releasePositionMargin(userId, c == null ? "USDT" : c.getQuote(), margin);
             }
         }

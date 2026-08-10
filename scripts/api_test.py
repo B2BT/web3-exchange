@@ -213,6 +213,8 @@ def main():
     fmp = curl("GET", BASE + "/api/futures/mark/%s" % FUT_SYM)
     fmpv = fmp.get("data")
     check("futures", "标记价", fmp.get("code") == 200 and fmpv is not None and int(fmpv) > 0, fmp.get("message"))
+    # 用真实标记价作为下单价格(最小单位转人读美元)，保证任何行情下都能成交
+    mark_price = "%.4f" % (int(fmpv or 0) / 1e8)
 
     # 入金 + 账户
     dep = curl("POST", BASE + "/api/futures/deposit?userId=%s&coin=USDT&amount=10000" % FUT_USER)
@@ -225,14 +227,14 @@ def main():
     # 下单：开多(挂单) → 对手开空撮合成交 → 持仓建立
     o1 = curl("POST", BASE + "/api/futures/order",
               {"userId": FUT_USER, "symbol": FUT_SYM, "side": 1, "orderType": 1,
-               "price": "0.5", "quantity": "0.001", "leverage": 10})
+               "price": mark_price, "quantity": "0.000001", "leverage": 10})
     o1d = o1.get("data") or {}
     check("futures", "开多限价下单", o1.get("code") == 200 and o1d.get("orderNo"), o1.get("message"))
     # 对手开空(另一用户)撮合
     curl("POST", BASE + "/api/futures/deposit?userId=99998889&coin=USDT&amount=10000")
     o2 = curl("POST", BASE + "/api/futures/order",
               {"userId": 99998889, "symbol": FUT_SYM, "side": 2, "orderType": 1,
-               "price": "0.5", "quantity": "0.001", "leverage": 10})
+               "price": mark_price, "quantity": "0.000001", "leverage": 10})
     o2d = o2.get("data") or {}
     check("futures", "对手开空撮合成交", o2.get("code") == 200 and int(o2d.get("filled") or 0) > 0, o2.get("message"))
 
@@ -245,13 +247,13 @@ def main():
     # 平仓：平多(挂单) → 对手开多吃 → 持仓清空
     c1 = curl("POST", BASE + "/api/futures/order",
               {"userId": FUT_USER, "symbol": FUT_SYM, "side": 3, "orderType": 1,
-               "price": "0.5", "quantity": "0.001", "leverage": 10})
+               "price": mark_price, "quantity": "0.000001", "leverage": 10})
     c1d = c1.get("data") or {}
     check("futures", "平多下单", c1.get("code") == 200 and c1d.get("orderNo"), c1.get("message"))
     curl("POST", BASE + "/api/futures/deposit?userId=99998890&coin=USDT&amount=10000")
     c2 = curl("POST", BASE + "/api/futures/order",
               {"userId": 99998890, "symbol": FUT_SYM, "side": 1, "orderType": 1,
-               "price": "0.5", "quantity": "0.001", "leverage": 10})
+               "price": mark_price, "quantity": "0.000001", "leverage": 10})
     c2d = c2.get("data") or {}
     check("futures", "对手开多吃平多", c2.get("code") == 200 and int(c2d.get("filled") or 0) > 0, c2.get("message"))
     fpos2 = curl("GET", BASE + "/api/futures/position?userId=%s" % FUT_USER)
