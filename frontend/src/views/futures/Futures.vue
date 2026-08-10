@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import * as futuresApi from '@/api/futures'
-import { formatLong } from '@/utils/format'
+import { formatAdaptivePrice, formatLong } from '@/utils/format'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -123,7 +123,7 @@ onBeforeUnmount(() => {
 
         <div class="mark-line">
           <span class="m-label">{{ t('futures.markPrice') }}</span>
-          <span class="m-value num">{{ formatLong(mark, 8) }}</span>
+          <span class="m-value num">{{ formatAdaptivePrice(Number(mark) / 1e8) }}</span>
         </div>
 
         <el-segmented

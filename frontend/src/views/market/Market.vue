@@ -7,7 +7,7 @@ import { tickerList } from '@/api/market'
 import type { KlineItem, TickerItem } from '@/api/market'
 import { marketWs } from '@/api/marketWs'
 import { DEFAULT_SYMBOLS, PERIODS, coinDecimals, symbolParts } from '@/config/market'
-import { formatBpPercent, formatLong } from '@/utils/format'
+import { formatAdaptivePrice, formatBpPercent, formatLong } from '@/utils/format'
 
 const { t } = useI18n()
 
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
         <el-col :span="6" :xs="24" :sm="6">
           <div class="tick-label">{{ currentSymbol }} {{ t('market.latestPrice') }}</div>
           <div class="tick-value breathe" :class="[changeClass, priceFlash]">
-            {{ formatLong(currentTicker.lastPrice, PRICE_DEC, 6) }}
+            {{ formatAdaptivePrice(currentTicker.lastPrice == null ? null : currentTicker.lastPrice / Math.pow(10, PRICE_DEC)) }}
           </div>
         </el-col>
         <el-col :span="4" :xs="8" :sm="4">

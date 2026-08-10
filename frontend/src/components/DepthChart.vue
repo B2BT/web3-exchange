@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vu
 import * as echarts from 'echarts'
 import { depth } from '@/api/market'
 import type { DepthData } from '@/api/market'
+import { formatAdaptivePrice } from '@/utils/format'
 
 const props = defineProps<{
   symbol: string
@@ -83,7 +84,7 @@ function buildOption(data: DepthData) {
       formatter: (params: any) => {
         const p = params[0]
         if (!p || !p.value) return ''
-        return `价格: ${Number(p.value[0]).toFixed(priceDec)}<br/>累计量: ${Number(p.value[1]).toLocaleString()}`
+        return `价格: ${formatAdaptivePrice(Number(p.value[0]))}<br/>累计量: ${Number(p.value[1]).toLocaleString()}`
       },
     },
     grid: { left: 60, right: 20, top: 24, bottom: 24 },

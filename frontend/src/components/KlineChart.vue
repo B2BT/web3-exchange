@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import * as echarts from 'echarts'
 import { kline } from '@/api/market'
 import type { KlineItem } from '@/api/market'
-import { formatLong } from '@/utils/format'
+import { formatAdaptivePrice, formatLong } from '@/utils/format'
 
 const props = defineProps<{
   symbol: string
@@ -107,15 +107,17 @@ function render(rows: KlineItem[]) {
     if (!p) return ''
     const idx = p.dataIndex
     const k = ohlc[idx]
-    // 价格统一用 priceDecimals(8)，成交量用 baseDecimals
+    // 价格用自适应精度(量级决定小数位)，成交量用 baseDecimals
     const fmt = (v: number | null | undefined, dec?: number) =>
       v == null ? '—' : formatLong(v, dec ?? pd, pd)
+    const fmtPrice = (v: number | null | undefined) =>
+      v == null ? '—' : formatAdaptivePrice(v / Math.pow(10, pd))
     return [
       `<div style="font-weight:600;margin-bottom:4px">${cats[idx]}</div>`,
-      `开: <b>${fmt(k[0])}</b>`,
-      `收: <b>${fmt(k[1])}</b>`,
-      `低: <b>${fmt(k[2])}</b>`,
-      `高: <b>${fmt(k[3])}</b>`,
+      `开: <b>${fmtPrice(k[0])}</b>`,
+      `收: <b>${fmtPrice(k[1])}</b>`,
+      `低: <b>${fmtPrice(k[2])}</b>`,
+      `高: <b>${fmtPrice(k[3])}</b>`,
       `量: ${fmt(vols[idx].value, bd)}`,
       `MA5: <span style="color:#f59e0b">${fmt(ma5[idx])}</span>`,
       `MA10: <span style="color:#22d3ee">${fmt(ma10[idx])}</span>`,
@@ -177,7 +179,7 @@ function render(rows: KlineItem[]) {
           min: 'dataMin',
           max: 'dataMax',
           splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
-          axisLabel: { color: '#64748b', formatter: (v: number) => formatLong(v, pd, 2) },
+          axisLabel: { color: '#64748b', formatter: (v: number) => formatAdaptivePrice(v / Math.pow(10, pd)) },
         },
         {
           gridIndex: 1,

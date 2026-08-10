@@ -32,3 +32,24 @@ export function formatBpPercent(bp: number | string | null | undefined): string 
   if (!Number.isFinite(n)) return '--'
   return (n / 100).toFixed(2) + '%'
 }
+
+/**
+ * 自适应精度价格格式化：按价格量级自动选小数位。
+ * - ≥1000：2 位（BTC/ETH 级别，$65064.12）
+ * - ≥1：4 位（中价币，$1.9154）
+ * - ≥0.01：6 位（低价币，$0.0696）
+ * - <0.01：8 位（极低价，$0.00001234）
+ * 精度上限 8 位（与后端价格最小单位一致）。
+ */
+export function formatAdaptivePrice(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '--'
+  const n = typeof value === 'string' ? Number(value) : value
+  if (!Number.isFinite(n)) return '--'
+  const abs = Math.abs(n)
+  let dec = 2
+  if (abs >= 1000) dec = 2
+  else if (abs >= 1) dec = 4
+  else if (abs >= 0.01) dec = 6
+  else dec = 8
+  return n.toFixed(dec).replace(/\.?0+$/, '') || '0'
+}
