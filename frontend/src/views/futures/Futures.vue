@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -15,6 +15,8 @@ const currentSymbol = ref('BTC-USDT-SWAP')
 const mark = ref<string | number>(0)
 const account = ref<futuresApi.FuturesAccount>({})
 const positions = ref<futuresApi.FuturesPosition[]>([])
+
+let refreshTimer: ReturnType<typeof setInterval> | undefined
 
 const side = ref(1) // 1开多 2开空 3平多 4平空
 const orderType = ref(1)
@@ -90,7 +92,19 @@ async function deposit() {
   }
 }
 
-onMounted(loadAll)
+onMounted(() => {
+  loadAll()
+  // 准实时刷新：每 5s 刷新标记价/账户/持仓，跟随 Binance 真实现货行情
+  refreshTimer = setInterval(() => {
+    loadMark()
+    loadAccount()
+    loadPositions()
+  }, 5000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
+})
 </script>
 
 <template>
