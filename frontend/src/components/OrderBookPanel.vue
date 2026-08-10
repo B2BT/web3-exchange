@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { depth } from '@/api/order'
-import type { DepthItem, DepthLevel } from '@/api/order'
-import { formatLong } from '@/utils/format'
+import { depth } from '@/api/market'
+import type { DepthData, DepthLevel } from '@/api/market'
+import { formatAdaptivePrice, formatLong } from '@/utils/format'
 
 const props = withDefaults(
   defineProps<{
@@ -29,8 +29,10 @@ const errorMsg = ref('')
 const asks = ref<DepthLevel[]>([])
 const bids = ref<DepthLevel[]>([])
 
-/** 展示用小数位：价格默认跟随计价币精度，避免过长 */
-const dispDec = computed(() => props.priceDisplayDecimals)
+/** 展示用小数位：价格默认跟随计价币精度，避免过长（保留 prop 供外部指定，展示已改自适应） */
+/** 盘口价格：按量级自适应精度（min-unit → 人读 → 自适应小数位） */
+const fmtPrice = (v: number | null | undefined): string =>
+  v == null ? '--' : formatAdaptivePrice(v / Math.pow(10, props.priceDecimals))
 
 const bestAsk = computed<number | null>(() => asks.value[0]?.price ?? null)
 const bestBid = computed<number | null>(() => bids.value[0]?.price ?? null)
@@ -47,7 +49,7 @@ async function load() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const res: DepthItem = await depth({ symbol: props.symbol, limit: 15 })
+    const res: DepthData = await depth(props.symbol, 15)
     // 防御性排序：asks 升序（最低价在上）、bids 降序（最高价在上）
     const a = (Array.isArray(res?.asks) ? res.asks : []).slice(0, 15)
     const b = (Array.isArray(res?.bids) ? res.bids : []).slice(0, 15)
@@ -108,14 +110,14 @@ onBeforeUnmount(() => {
           type="button"
           @click="onRowClick(lvl.price)"
         >
-          <span class="ob-price num">{{ formatLong(lvl.price, priceDecimals, dispDec) }}</span>
+          <span class="ob-price num">{{ fmtPrice(lvl.price) }}</span>
           <span class="ob-qty num">{{ formatLong(lvl.quantity, baseDecimals, baseDecimals) }}</span>
         </button>
       </div>
 
       <!-- 中间最新价 -->
       <div class="ob-mid" v-if="midPrice != null">
-        <span class="num">{{ formatLong(midPrice, priceDecimals, dispDec) }}</span>
+        <span class="num">{{ fmtPrice(midPrice) }}</span>
       </div>
 
       <!-- 买盘：价格降序（最高价在上，靠近中间价）绿色 -->
@@ -127,7 +129,7 @@ onBeforeUnmount(() => {
           type="button"
           @click="onRowClick(lvl.price)"
         >
-          <span class="ob-price num">{{ formatLong(lvl.price, priceDecimals, dispDec) }}</span>
+          <span class="ob-price num">{{ fmtPrice(lvl.price) }}</span>
           <span class="ob-qty num">{{ formatLong(lvl.quantity, baseDecimals, baseDecimals) }}</span>
         </button>
       </div>

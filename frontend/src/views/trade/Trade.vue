@@ -9,7 +9,7 @@ import { tickerList } from '@/api/market'
 import { marketWs } from '@/api/marketWs'
 import { useAuthStore } from '@/stores/auth'
 import { DEFAULT_SYMBOLS, PRICE_DECIMALS, coinDecimals, symbolParts } from '@/config/market'
-import { formatLong, toLong } from '@/utils/format'
+import { formatAdaptivePrice, formatLong, toLong } from '@/utils/format'
 import OrderBookPanel from '@/components/OrderBookPanel.vue'
 import RecentTrades from '@/components/RecentTrades.vue'
 
@@ -186,7 +186,7 @@ function applyRatio(pct: number) {
 /** 点最新价 → 填入限价 */
 function fillLatestPrice() {
   if (lastPriceLong.value == null) return void ElMessage.warning('暂无最新价')
-  price.value = formatLong(lastPriceLong.value, PRICE_DECIMALS, 6)
+  price.value = formatAdaptivePrice(lastPriceLong.value / Math.pow(10, PRICE_DECIMALS))
 }
 
 /** 点盘口档位价格 → 填入限价（price 传入人读字符串） */
@@ -381,7 +381,7 @@ onBeforeUnmount(() => {
           <span class="last-price-line">
             {{ t('trade.latestPrice') }}
             <button type="button" class="lp-val num" @click="fillLatestPrice">
-              {{ lastPriceLong != null ? formatLong(lastPriceLong, quoteDecimals, quoteDecimals) : '--' }}
+              {{ formatAdaptivePrice(lastPriceLong == null ? null : lastPriceLong / Math.pow(10, PRICE_DECIMALS)) }}
             </button>
           </span>
         </div>

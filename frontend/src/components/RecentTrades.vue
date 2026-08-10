@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { recentTrades } from '@/api/order'
 import type { RecentTradeItem } from '@/api/order'
-import { formatLong } from '@/utils/format'
+import { formatAdaptivePrice, formatLong } from '@/utils/format'
 
 const props = withDefaults(
   defineProps<{
@@ -94,7 +94,7 @@ onBeforeUnmount(() => {
           <div v-for="(t, i) in rows" :key="(t.id ?? t.tradeNo ?? i) + '_' + i" class="rt-row">
             <span class="rt-time">{{ formatTime(t.tradeTime) }}</span>
             <span class="rt-price num" :class="priceClass(t, i)">
-              {{ formatLong(t.price, priceDecimals, priceDisplayDecimals) }}
+              {{ formatAdaptivePrice(t.price == null ? null : t.price / Math.pow(10, priceDecimals)) }}
             </span>
             <span class="rt-qty num">{{ formatLong(t.quantity, baseDecimals, baseDecimals) }}</span>
           </div>
