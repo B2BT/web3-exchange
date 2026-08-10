@@ -102,3 +102,17 @@ CREATE TABLE IF NOT EXISTS t_futures_order (
   UNIQUE KEY uk_order_no (order_no),
   KEY idx_user_symbol (user_id, symbol, status)
 ) ENGINE=InnoDB COMMENT='永续合约订单';
+
+-- ============================================================
+-- 种子数据：永续合约交易对（7 主流币 USDT 本位永续，幂等插入）
+-- ============================================================
+INSERT IGNORE INTO t_swap_contract
+  (id, symbol, base, quote, price_decimals, qty_decimals, max_leverage, mmr, imr, funding_interval_hours, max_funding_rate, status)
+VALUES
+  (1001,'BTC-USDT-SWAP','BTC','USDT',8,8,100,5000,10000,8,500,0),
+  (1002,'ETH-USDT-SWAP','ETH','USDT',8,8,100,5000,10000,8,500,0),
+  (1003,'BNB-USDT-SWAP','BNB','USDT',8,8,100,5000,10000,8,500,0),
+  (1004,'XRP-USDT-SWAP','XRP','USDT',8,8,100,5000,10000,8,500,0),
+  (1005,'SOL-USDT-SWAP','SOL','USDT',8,8,100,5000,10000,8,500,0),
+  (1006,'ADA-USDT-SWAP','ADA','USDT',8,8,100,5000,10000,8,500,0),
+  (1007,'DOGE-USDT-SWAP','DOGE','USDT',8,8,100,5000,10000,8,500,0);
