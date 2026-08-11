@@ -2,6 +2,9 @@ package com.web3.exchange.market.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.web3.exchange.market.kafka.KafkaTopics;
+import com.web3.exchange.market.kafka.MarketEventProducer;
+import com.web3.exchange.market.kafka.dto.MarketEvent;
 import com.web3.exchange.market.market.MarketAggregator;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -40,6 +43,7 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
     private static final String[] KLINE_INTERVALS = {"1m", "5m", "15m", "1h", "4h", "1d"};
 
     private final MarketAggregator aggregator;
+    private final MarketEventProducer eventProducer;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final AtomicBoolean connected = new AtomicBoolean(false);
@@ -150,6 +154,18 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
         aggregator.updateExternalTicker(ticker);
         // 同时注入一笔外部成交，驱动最新价/短线 K线
         aggregator.applyExternalTrade(symbol, t.lastPrice, 100000000L);
+
+        // 发布到 Kafka 行情管道（供多消费者独立消费）
+        MarketEvent ev = new MarketEvent();
+        ev.setType("ticker");
+        ev.setSymbol(symbol);
+        ev.setLastPrice(t.lastPrice);
+        ev.setHigh24h(t.high);
+        ev.setLow24h(t.low);
+        ev.setChange24h(t.change);
+        ev.setVolume24h(t.volume);
+        ev.setQuoteVolume24h(t.quoteVolume);
+        eventProducer.publish(KafkaTopics.MARKET_TICKER, ev);
     }
 
     /** 处理 @depth20 订单簿快照：data.bids/asks 各档[price,qty]。symbol 取自 stream 名(btcusdt@depth20)。 */
@@ -160,6 +176,14 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
         java.util.List<long[]> bids = parseLevels(d.path("bids"));
         java.util.List<long[]> asks = parseLevels(d.path("asks"));
         aggregator.updateExternalDepth(symbol, bids, asks);
+
+        // 发布到 Kafka 行情管道
+        MarketEvent ev = new MarketEvent();
+        ev.setType("depth");
+        ev.setSymbol(symbol);
+        ev.setBids(bids);
+        ev.setAsks(asks);
+        eventProducer.publish(KafkaTopics.MARKET_DEPTH, ev);
     }
 
     private java.util.List<long[]> parseLevels(JsonNode arr) {
@@ -187,6 +211,20 @@ public class BinanceWsPriceSource extends TextWebSocketHandler {
         long volume = toMin(k.path("v").asText());
         long quoteVolume = toMin(k.path("q").asText());
         aggregator.applyExternalKline(symbol, interval, openTime, open, high, low, close, volume, quoteVolume);
+
+        // 发布到 Kafka 行情管道
+        MarketEvent ev = new MarketEvent();
+        ev.setType("kline");
+        ev.setSymbol(symbol);
+        ev.setInterval(interval);
+        ev.setOpenTime(openTime);
+        ev.setOpen(open);
+        ev.setHigh(high);
+        ev.setLow(low);
+        ev.setClose(close);
+        ev.setVolume(volume);
+        ev.setQuoteVolume(quoteVolume);
+        eventProducer.publish(KafkaTopics.MARKET_KLINE, ev);
     }
 
     @Override

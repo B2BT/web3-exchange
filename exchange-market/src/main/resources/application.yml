@@ -99,6 +99,8 @@ server-settings:
     quote-decimals: 8      # 价格最小单位位数
     quantity: 100000000    # 注入成交的基础币数量(最小单位, 1e8=1)
     coingecko-enabled: false   # Binance WS 优先；WS 不可用时可开此兜底
+  kafka:
+    bootstrap-servers: localhost:9092
 
 logging:
   level:
