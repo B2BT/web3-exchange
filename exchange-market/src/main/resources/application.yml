@@ -113,3 +113,9 @@ server-settings:
 logging:
   level:
     com.web3.exchange.market: debug
+
+# 分布式链路追踪（Micrometer Tracing → Zipkin）
+management:
+  tracing:
+    sampling:
+      probability: 1.0   # 全采样（演示/排查场景；生产可按需降低如0.1）

@@ -24,11 +24,37 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- actuator：提供健康检查/指标，且是 Micrometer Tracing 自动配置的前置条件 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <!-- logstash-logback-encoder：输出结构化 JSON 日志（供 Filebeat/Logstash 采集进 ELK） -->
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
             <version>7.4</version>
+        </dependency>
+
+        <!-- =============== 分布式链路追踪（Micrometer Tracing + Brave → Zipkin） =============== -->
+        <!-- Spring Cloud 2023 用 Micrometer Tracing 替代已停维护的 Sleuth；traceId 跨服务串联排查调用链 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.zipkin.reporter2</groupId>
+            <artifactId>zipkin-reporter-brave</artifactId>
+        </dependency>
+        <!-- 上报 Zipkin 的 HTTP 发送器 -->
+        <dependency>
+            <groupId>io.zipkin.reporter2</groupId>
+            <artifactId>zipkin-sender-okhttp3</artifactId>
+        </dependency>
+        <!-- feign-micrometer：让 OpenFeign 透传 trace 头（跨服务 Feign 调用共享 traceId） -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-micrometer</artifactId>
         </dependency>
 
         <!-- MyBatis-Plus核心依赖 -->

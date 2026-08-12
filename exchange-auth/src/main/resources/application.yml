@@ -106,3 +106,9 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/auth-service.log
+
+# 分布式链路追踪（Micrometer Tracing → Zipkin）
+management:
+  tracing:
+    sampling:
+      probability: 1.0   # 全采样（演示/排查场景；生产可按需降低如0.1）

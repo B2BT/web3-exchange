@@ -210,3 +210,9 @@ spring:
 
 jwt:
   secret: web3-exchange-dev-hs512-jwt-secret-key-2026-0804-please-use-at-least-64-chars
+
+# 分布式链路追踪（Micrometer Tracing → Zipkin）
+management:
+  tracing:
+    sampling:
+      probability: 1.0
