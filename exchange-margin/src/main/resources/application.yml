@@ -1,5 +1,13 @@
 server:
   port: 8110
+  # Tomcat 线程池调优（高并发）
+  tomcat:
+    threads:
+      max: 300
+      min-spare: 20
+    accept-count: 200
+    max-connections: 10000
+    connection-timeout: 10000
 spring:
   application:
     name: exchange-margin
@@ -17,10 +25,11 @@ spring:
     url: jdbc:mysql://localhost:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: root
+    # 连接池配置（调优：max-active 20→50 应对峰值连接）
     druid:
-      initial-size: 5
-      min-idle: 5
-      max-active: 20
+      initial-size: 10
+      min-idle: 10
+      max-active: 50
       max-wait: 60000
       time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000

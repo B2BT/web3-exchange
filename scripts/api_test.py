@@ -16,6 +16,8 @@ PASS, FAIL = 0, 0
 RESULTS = []  # (domain, case, ok, detail)
 
 def curl(method, url, data=None, token=None):
+    # 节流：控制请求速率，避免触发网关限流(测试脚本兼容生产限流)
+    time.sleep(0.15)
     cmd = ["curl", "-s", "-X", method, url]
     if token: cmd += ["-H", "Authorization: Bearer " + token]
     if data is not None:

@@ -102,6 +102,12 @@
             <artifactId>rocketmq-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- =============== Caffeine 本地缓存（交易对配置，读多写少） =============== -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- =============== 测试 =============== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

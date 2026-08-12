@@ -1,6 +1,14 @@
 # application.yml
 server:
   port: 8104
+  # Tomcat 线程池调优（高并发）：工作线程 + 等待队列 + 连接数
+  tomcat:
+    threads:
+      max: 300        # 最大工作线程（默认200 → 调高处理并发）
+      min-spare: 20   # 常驻最小线程
+    accept-count: 200 # 等待队列长度（超时排队，避免高峰直接拒绝）
+    max-connections: 10000 # 最大并发连接
+    connection-timeout: 10000
 
 spring:
   application:
@@ -21,11 +29,11 @@ spring:
     username: root
     password: root
 
-    # 连接池配置
+    # 连接池配置（调优：max-active 20→50 应对峰值连接）
     druid:
-      initial-size: 5
-      min-idle: 5
-      max-active: 20
+      initial-size: 10
+      min-idle: 10
+      max-active: 50
       max-wait: 60000
       time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000

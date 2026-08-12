@@ -15,6 +15,8 @@ import com.web3.exchange.futures.mapper.SwapContractMapper;
 import com.web3.exchange.futures.service.FuturesAccountService;
 import com.web3.exchange.futures.service.FuturesTradeService;
 import com.web3.exchange.futures.service.MarkPriceService;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -35,6 +38,12 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
     /** 常数：1=开多 2=开空 3=平多 4=平空 */
     private static final int OPEN_LONG = 1, OPEN_SHORT = 2, CLOSE_LONG = 3, CLOSE_SHORT = 4;
 
+    /** 合约配置本地缓存（读多写少，低频变化，5 分钟过期） */
+    private static final Cache<String, SwapContract> CONTRACT_CACHE = Caffeine.newBuilder()
+            .maximumSize(500)
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .build();
+
     private final FuturesOrderMapper orderMapper;
     private final FuturesPositionMapper positionMapper;
     private final SwapContractMapper contractMapper;
@@ -45,9 +54,7 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
     @Override
     @Transactional
     public FuturesOrder placeOrder(Long userId, PlaceFuturesOrderDTO dto) {
-        SwapContract contract = contractMapper.selectOne(
-                new LambdaQueryWrapper<SwapContract>().eq(SwapContract::getSymbol, dto.getSymbol())
-                        .eq(SwapContract::getStatus, 0).last("LIMIT 1"));
+        SwapContract contract = getContract(dto.getSymbol());
         if (contract == null) {
             throw new BusinessException("合约交易对不存在或已下架");
         }
@@ -246,6 +253,21 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
                 .multiply(BigDecimal.valueOf(priceMin))
                 .divide(BigDecimal.valueOf(1_0000_0000L), 0, RoundingMode.HALF_UP)
                 .longValue();
+    }
+
+    /** 查上架合约（status=0），走 Caffeine 本地缓存减少下单高频路径 DB 查询。 */
+    private SwapContract getContract(String symbol) {
+        SwapContract cached = CONTRACT_CACHE.getIfPresent(symbol);
+        if (cached != null) {
+            return cached;
+        }
+        SwapContract c = contractMapper.selectOne(
+                new LambdaQueryWrapper<SwapContract>().eq(SwapContract::getSymbol, symbol)
+                        .eq(SwapContract::getStatus, 0).last("LIMIT 1"));
+        if (c != null) {
+            CONTRACT_CACHE.put(symbol, c);
+        }
+        return c;
     }
 
     private long toMinUnit(String val, Integer decimals) {

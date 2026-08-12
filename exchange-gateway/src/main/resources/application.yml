@@ -38,21 +38,42 @@ spring:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 redis-rate-limiter.requestedTokens: 1
-        # order 服务：无 context-path，Controller 映射 /api/order/**
+        # order 服务：无 context-path，Controller 映射 /api/order/**（下单/撮合，重点防刷单）
         - id: order-service
           uri: lb://exchange-order
           predicates:
             - Path=/api/order/**
-        # chain 服务：无 context-path，Controller 映射 /api/chain/**
+          filters:
+            # 限流：下单接口稍严（replenishRate=20/秒, burstCapacity=40 突发，KeyResolver 默认按 IP/用户）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+        # chain 服务：无 context-path，Controller 映射 /api/chain/**（钱包/充提，防刷）
         - id: chain-service
           uri: lb://exchange-chain
           predicates:
             - Path=/api/chain/**
-        # market 服务：无 context-path，Controller 映射 /api/market/**
+          filters:
+            # 限流：钱包/充提接口（replenishRate=20/秒, burstCapacity=40 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+        # market 服务：无 context-path，Controller 映射 /api/market/**（行情读，高吞吐较高阈值）
         - id: market-service
           uri: lb://exchange-market
           predicates:
             - Path=/api/market/**
+          filters:
+            # 限流：行情读接口高频（replenishRate=200/秒, burstCapacity=400 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 200
+                redis-rate-limiter.burstCapacity: 400
+                redis-rate-limiter.requestedTokens: 1
         # market WebSocket 实时行情：ws 升级原生转发（market 服务注册端点 /api/market/ws 与 /ws）
         # 置于 market-service 之前，确保 /api/market/ws 走专路由（Spring Cloud Gateway 原生支持 WebSocket）
         - id: market-websocket
@@ -64,16 +85,37 @@ spring:
           uri: lb://exchange-notify
           predicates:
             - Path=/api/notify/**
-        # asset 服务：无 context-path，Controller 映射 /api/asset/**
+          filters:
+            # 限流：通知接口（replenishRate=50/秒, burstCapacity=100 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                redis-rate-limiter.requestedTokens: 1
+        # asset 服务：无 context-path，Controller 映射 /api/asset/**（资金查询/操作，防刷）
         - id: asset-service
           uri: lb://exchange-asset
           predicates:
             - Path=/api/asset/**
+          filters:
+            # 限流：资金接口（replenishRate=30/秒, burstCapacity=60 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
         # monitor 服务：无 context-path，Controller 映射 /api/monitor/**
         - id: monitor-service
           uri: lb://exchange-monitor
           predicates:
             - Path=/api/monitor/**
+          filters:
+            # 限流：健康/指标接口（replenishRate=50/秒, burstCapacity=100 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                redis-rate-limiter.requestedTokens: 1
         # ticket 管理接口（工单管理，/api/admin/ticket/** 精确路由到 exchange-ticket，须在泛化的 admin-service 之前）
         - id: admin-ticket-service
           uri: lb://exchange-ticket
@@ -85,31 +127,73 @@ spring:
           uri: lb://exchange-admin
           predicates:
             - Path=/api/admin/**
-        # margin 服务（杠杆现货）：无 context-path，Controller 映射 /api/margin/**
+          filters:
+            # 限流：管理接口（replenishRate=20/秒, burstCapacity=40 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+        # margin 服务（杠杆现货）：无 context-path，Controller 映射 /api/margin/**(借贷，防刷)
         - id: margin-service
           uri: lb://exchange-margin
           predicates:
             - Path=/api/margin/**
-        # staking 服务（理财）：无 context-path，Controller 映射 /api/staking/**
+          filters:
+            # 限流：杠杆借贷（replenishRate=30/秒, burstCapacity=60 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
+        # staking 服务（理财）：无 context-path，Controller 映射 /api/staking/**(申购/赎回，防刷)
         - id: staking-service
           uri: lb://exchange-staking
           predicates:
             - Path=/api/staking/**
+          filters:
+            # 限流：理财申购/赎回（replenishRate=30/秒, burstCapacity=60 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
         # risk 服务（风控）：无 context-path，Controller 映射 /api/risk/**
         - id: risk-service
           uri: lb://exchange-risk
           predicates:
             - Path=/api/risk/**
+          filters:
+            # 限流：风控接口（replenishRate=30/秒, burstCapacity=60 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
         # ticket 服务（客服工单）：无 context-path，Controller 映射 /api/ticket/**
         - id: ticket-service
           uri: lb://exchange-ticket
           predicates:
             - Path=/api/ticket/**
-        # futures 服务（永续合约）：无 context-path，Controller 映射 /api/futures/**
+          filters:
+            # 限流：工单接口（replenishRate=30/秒, burstCapacity=60 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
+        # futures 服务（永续合约）：无 context-path，Controller 映射 /api/futures/**(合约下单，防刷单)
         - id: futures-service
           uri: lb://exchange-futures
           predicates:
             - Path=/api/futures/**
+          filters:
+            # 限流：合约下单（replenishRate=20/秒, burstCapacity=40 突发）
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
         # 行情/通知 WebSocket 推送路由（预留）
         # - id: market-websocket
         #   uri: lb://exchange-market
