@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Web3 交易所统一日志配置（logstash-logback-encoder 结构化 JSON 输出）。
+  位于 exchange-common，所有业务服务共享：
+    - 控制台输出结构化 JSON（@timestamp/service/appName/level/logger/thread/message）
+    - 同时写滚动文件日志 /logs/<service>/*.json，供 Filebeat 采集进 ELK
+  通过 ${spring.application.name} 区分服务，多服务日志可集中索引检索。
+-->
+<configuration>
+    <!-- 服务名（由各服务 application.name 注入） -->
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="web3-exchange"/>
+
+    <!-- 日志根目录 -->
+    <property name="LOG_DIR" value="${LOG_PATH:-/logs}"/>
+
+    <!-- 1) 控制台：结构化 JSON（含 traceId 占位，供链路追踪扩展） -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <customFields>{"serviceName":"${appName}"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- 2) 滚动文件：按天滚动，单文件 100MB，保留 30 天 -->
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${appName}/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/${appName}/app.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <customFields>{"serviceName":"${appName}"}</customFields>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE_JSON"/>
+        <appender-ref ref="FILE_JSON"/>
+    </root>
+
+    <!-- 业务包日志级别（可通过各服务 application.yml 的 logging.level 覆盖） -->
+    <logger name="com.web3.exchange" level="DEBUG"/>
+</configuration>

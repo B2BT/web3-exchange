@@ -1,0 +1,24 @@
+# Filebeat 采集配置：采集微服务 JSON 日志 → 输出到 Elasticsearch
+# 日志文件为 logstash-logback-encoder 输出的结构化 JSON
+filebeat.inputs:
+  - type: filestream
+    enabled: true
+    id: web3-exchange-logs
+    paths:
+      - /logs/*/app.log
+    # logstash-logback-encoder 每行一个 JSON 对象，用 ndjson 直接解码
+    parsers:
+      - ndjson:
+          target: ""
+          add_error_key: true
+
+output.elasticsearch:
+  hosts: ["http://dev-elasticsearch:9200"]
+  index: "web3-logs-%{+yyyy.MM.dd}"
+
+setup.ilm.enabled: false
+setup.template.name: "web3-logs"
+setup.template.pattern: "web3-logs-*"
+
+logging.level: info
+logging.to_stderr: true
