@@ -38,6 +38,11 @@ docker run -d --name dev-elasticsearch --network dev-env_dev-net \
   -e discovery.type=single-node -e xpack.security.enabled=false \
   -p 9200:9200 docker.elastic.co/elasticsearch/elasticsearch:8.13.4
 
+docker run -d --name dev-kibana --network dev-env_dev-net \
+  -e ELASTICSEARCH_HOSTS=http://dev-elasticsearch:9200 \
+  -e XPACK_SECURITY_ENABLED=false \
+  -p 5601:5601 docker.elastic.co/kibana/kibana:8.13.4
+
 # 微服务（LOG_PATH 写日志文件）
 LOG_PATH=/Users/yongzx/logs java -jar exchange-order/target/exchange-order-1.0.0.jar
 ```
@@ -61,6 +66,17 @@ curl "http://localhost:9200/.ds-web3-logs-*/_search" -d '{"query":{"query_string
 - ✅ Filebeat 采集 → ES 存储（4672+ 条日志）
 - ✅ 按 serviceName / level / message 可检索
 - ⚠️ Kibana 首次访问需在浏览器 http://localhost:5601 完成配置（创建 data view `web3-logs-*`）
+
+## Kibana 配置（Data View）
+
+Kibana 8.x 在 ES 无安全时必须设 `XPACK_SECURITY_ENABLED=false` 才能跳过 interactive setup。就绪后运行脚本创建 data view：
+
+```bash
+bash scripts/setup-kibana.sh
+# 或手动: Kibana → Management → Data Views → Create → 输入 web3-logs-* → 时间字段 @timestamp
+```
+
+创建后打开 **Discover** 即可检索所有微服务日志（按 serviceName/level/关键字筛选）。
 
 ## 排坑记录
 
