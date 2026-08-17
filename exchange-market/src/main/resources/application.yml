@@ -107,6 +107,16 @@ server-settings:
     quote-decimals: 8      # 价格最小单位位数
     quantity: 100000000    # 注入成交的基础币数量(最小单位, 1e8=1)
     coingecko-enabled: false   # Binance WS 优先；WS 不可用时可开此兜底
+    # DeFi 链上价格源（Uniswap V2 储备算价，中心化源最后的链上兜底；默认关闭）
+    defi-enabled: false
+    defi-rpc-url: ""
+    # 示例：ETH/USDT 对（token0=USDC计价, token1=ETH, 需配各自 decimals）
+    defi-pairs:
+      ETH/USDT:
+        pair: 0x0000000000000000000000000000000000000000
+        quoteIsToken0: true
+        quoteDecimals: 6
+        baseDecimals: 18
   kafka:
     bootstrap-servers: localhost:9092
 

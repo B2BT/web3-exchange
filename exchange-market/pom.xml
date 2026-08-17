@@ -50,6 +50,12 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
 
+        <!-- web3j：DeFi 链上价格源（调 Uniswap V2 Pair getReserves 读储备算价） -->
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>core</artifactId>
+        </dependency>
+
         <!-- =============== 公共模块 =============== -->
         <dependency>
             <groupId>com.web3.exchange</groupId>
