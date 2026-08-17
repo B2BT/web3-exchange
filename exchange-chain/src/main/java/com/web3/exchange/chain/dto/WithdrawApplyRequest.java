@@ -34,6 +34,8 @@ public class WithdrawApplyRequest implements Serializable {
     @Positive
     @Schema(description = "提现金额(最小单位)", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long amount;
+    @Schema(description = "NFT代币ID(ERC-721/1155提现必填; ERC-20为空)")
+    private String tokenId;
     @Schema(description = "反钓鱼码(已设置则须正确,风控校验)")
     private String antiPhishing;
 }

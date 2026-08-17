@@ -42,6 +42,10 @@ CREATE TABLE `t_coin` (
                           KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='币种表';
 
+-- NFT 标准扩展：ERC-721/ERC-1155（token_standard 默认 ERC-20，兼容既有币种）
+ALTER TABLE `t_coin`
+  ADD COLUMN `token_standard` varchar(20) NOT NULL DEFAULT 'ERC-20' COMMENT '代币标准:ERC-20=同质化,ERC-721=NFT,ERC-1155=半同质化' AFTER `coin_type`;
+
 -- ------------------------------------------------------------
 -- 2. 链配置表 t_chain
 -- ------------------------------------------------------------
@@ -185,6 +189,10 @@ CREATE TABLE `t_deposit` (
                              KEY `idx_to_address` (`to_address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='充值记录表';
 
+-- NFT 充值扩展：token_id（ERC-721 的 NFT 编号 / ERC-1155 的 id；ERC-20 为 NULL）
+ALTER TABLE `t_deposit`
+  ADD COLUMN `token_id` varchar(128) DEFAULT NULL COMMENT 'NFT代币ID(ERC-721/1155; ERC-20为空)' AFTER `amount`;
+
 -- ------------------------------------------------------------
 -- 6. 提现记录表 t_withdraw
 -- ------------------------------------------------------------
@@ -223,6 +231,10 @@ CREATE TABLE `t_withdraw` (
                               KEY `idx_status_time` (`status`, `create_time`),
                               KEY `idx_tx_hash` (`tx_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='提现记录表';
+
+-- NFT 提现扩展：token_id（ERC-721/1155 提现指定 NFT；ERC-20 为空）
+ALTER TABLE `t_withdraw`
+  ADD COLUMN `token_id` varchar(128) DEFAULT NULL COMMENT 'NFT代币ID(ERC-721/1155; ERC-20为空)' AFTER `amount`;
 
 -- ------------------------------------------------------------
 -- 7. 充币地址表 t_asset_address

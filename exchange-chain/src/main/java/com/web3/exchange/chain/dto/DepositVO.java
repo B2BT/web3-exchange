@@ -31,6 +31,8 @@ public class DepositVO implements Serializable {
     private String toAddress;
     @Schema(description = "充值金额(最小单位)")
     private Long amount;
+    @Schema(description = "NFT代币ID(ERC-721/1155; ERC-20为空)")
+    private String tokenId;
     @Schema(description = "网络手续费(最小单位)")
     private Long fee;
     @Schema(description = "链上交易哈希")

@@ -117,6 +117,7 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
                 .setChainCode(chain.getChainCode())
                 .setToAddress(req.getToAddress())
                 .setAmount(req.getAmount())
+                .setTokenId(req.getTokenId())
                 .setFee(fee)
                 .setRealAmount(realAmount)
                 .setStatus(0);
@@ -252,7 +253,18 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
         BigInteger chainId = chain.getChainId() == null ? BigInteger.ONE : BigInteger.valueOf(chain.getChainId());
 
         RawTransaction rawTx;
-        if (token) {
+        boolean nft = "ERC-721".equalsIgnoreCase(coin.getTokenStandard())
+                || "ERC-1155".equalsIgnoreCase(coin.getTokenStandard());
+        if (token && nft) {
+            // NFT 提现：transferFrom(hotWallet, to, tokenId)，金额为 0（NFT 不转移原生价值）
+            String tokenId = w.getTokenId() == null ? "0" : w.getTokenId();
+            Function function = new Function("transferFrom",
+                    Arrays.asList(new Address(hotAddr), new Address(w.getToAddress()), new Uint256(new BigInteger(tokenId))),
+                    List.of());
+            String data = FunctionEncoder.encode(function);
+            rawTx = RawTransaction.createTransaction(nonce, gasPrice, BigInteger.valueOf(150_000),
+                    coin.getContractAddress(), BigInteger.ZERO, data);
+        } else if (token) {
             Function function = new Function("transfer",
                     Arrays.asList(new Address(w.getToAddress()), new Uint256(BigInteger.valueOf(w.getRealAmount()))),
                     List.of());
@@ -449,6 +461,7 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
         vo.setChainCode(w.getChainCode());
         vo.setToAddress(w.getToAddress());
         vo.setAmount(w.getAmount());
+        vo.setTokenId(w.getTokenId());
         vo.setFee(w.getFee());
         vo.setRealAmount(w.getRealAmount());
         vo.setStatus(w.getStatus());

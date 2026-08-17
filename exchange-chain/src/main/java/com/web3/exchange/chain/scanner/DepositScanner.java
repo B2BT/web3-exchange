@@ -37,9 +37,17 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class DepositScanner {
 
-    /** ERC-20 Transfer(address,address,uint256) 事件签名哈希 */
+    /** ERC-20 Transfer(address,address,uint256) 事件签名哈希（ERC-721 同签名，第三 topic 为 tokenId） */
     public static final String TRANSFER_TOPIC =
             "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+    /** ERC-1155 TransferSingle(address,address,address,uint256,uint256) 事件签名哈希 */
+    public static final String TRANSFER_SINGLE_TOPIC =
+            "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62";
+
+    /** ERC-1155 TransferBatch(address,address,address,uint256[],uint256[]) 事件签名哈希 */
+    public static final String TRANSFER_BATCH_TOPIC =
+            "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb";
 
     private final ChainProperties chainProperties;
     private final StringRedisTemplate redis;
@@ -103,36 +111,41 @@ public class DepositScanner {
         }
         List<Coin> coins = coinService.listByChain(c.getChainCode());
 
-        // ===== ERC-20 代币：eth_getLogs(Transfer) =====
-        Map<String, Coin> contractCoinMap = new HashMap<>();
-        for (Coin coin : coins) {
-            if ("TOKEN".equalsIgnoreCase(coin.getCoinType())
-                    && coin.getDepositEnabled() != null && coin.getDepositEnabled() == 1
-                    && coin.getContractAddress() != null && !coin.getContractAddress().isBlank()) {
-                contractCoinMap.put(coin.getContractAddress().toLowerCase(Locale.ROOT), coin);
-            }
-        }
-        if (!contractCoinMap.isEmpty()) {
-            try {
-                EthFilter filter = new EthFilter(
-                        DefaultBlockParameter.valueOf(BigInteger.valueOf(from)),
-                        DefaultBlockParameter.valueOf(BigInteger.valueOf(to)),
-                        new java.util.ArrayList<>(contractCoinMap.keySet()));
-                filter.addSingleTopic(TRANSFER_TOPIC);
-                EthLog ethLog = web3j.ethGetLogs(filter).send();
-                if (ethLog.hasError()) {
-                    log.warn("[scan] {} eth_getLogs 错误: {}", c.getChainCode(), ethLog.getError().getMessage());
-                } else {
-                    for (EthLog.LogResult logResult : ethLog.getLogs()) {
-                        if (logResult instanceof Log lg) {
-                            handleTransferLog(c, lg, contractCoinMap);
-                        }
+        // ===== ERC-20/ERC-721/ERC-1155 合约代币：eth_getLogs(标准 Transfer 事件) =====
+                Map<String, Coin> contractCoinMap = new HashMap<>();
+                for (Coin coin : coins) {
+                    if ("TOKEN".equalsIgnoreCase(coin.getCoinType())
+                            && coin.getDepositEnabled() != null && coin.getDepositEnabled() == 1
+                            && coin.getContractAddress() != null && !coin.getContractAddress().isBlank()) {
+                        contractCoinMap.put(coin.getContractAddress().toLowerCase(Locale.ROOT), coin);
                     }
                 }
-            } catch (Exception e) {
-                log.warn("[scan] {} eth_getLogs 异常: {}", c.getChainCode(), e.getMessage());
-            }
-        }
+                if (!contractCoinMap.isEmpty()) {
+                    try {
+                        EthFilter filter = new EthFilter(
+                                DefaultBlockParameter.valueOf(BigInteger.valueOf(from)),
+                                DefaultBlockParameter.valueOf(BigInteger.valueOf(to)),
+                                new java.util.ArrayList<>(contractCoinMap.keySet()));
+                        // 兼容三标准：ERC-20/721 Transfer 同签名；ERC-1155 用 TransferSingle/TransferBatch（topic0 不同，
+                        // 不过滤 topic0，靠 topic0 识别后再分流，避免多 filter 重复扫块）
+                        filter.addOptionalTopics(
+                                TRANSFER_TOPIC,           // ERC-20/721 Transfer(address,address,uint256)
+                                TRANSFER_SINGLE_TOPIC,    // ERC-1155 TransferSingle(address,address,address,uint256,uint256)
+                                TRANSFER_BATCH_TOPIC);    // ERC-1155 TransferBatch(address,address,address,uint256[],uint256[])
+                        EthLog ethLog = web3j.ethGetLogs(filter).send();
+                        if (ethLog.hasError()) {
+                            log.warn("[scan] {} eth_getLogs 错误: {}", c.getChainCode(), ethLog.getError().getMessage());
+                        } else {
+                            for (EthLog.LogResult logResult : ethLog.getLogs()) {
+                                if (logResult instanceof Log lg) {
+                                    handleTransferLog(c, lg, contractCoinMap);
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("[scan] {} eth_getLogs 异常: {}", c.getChainCode(), e.getMessage());
+                    }
+                }
 
         // ===== 原生币（ETH 等）：eth_getBlockByNumber(fullTx=true) 扫 tx.to == 充币地址 =====
         for (Coin coin : coins) {
@@ -161,7 +174,7 @@ public class DepositScanner {
     private void handleTransferLog(Chain c, Log lg, Map<String, Coin> contractCoinMap) {
         try {
             List<String> topics = lg.getTopics();
-            if (topics == null || topics.size() < 3) {
+            if (topics == null || topics.isEmpty()) {
                 return;
             }
             String contract = lg.getAddress() == null ? null : lg.getAddress().toLowerCase(Locale.ROOT);
@@ -169,12 +182,66 @@ public class DepositScanner {
             if (coin == null) {
                 return;
             }
-            String from = "0x" + topics.get(1).substring(26);
-            String to = "0x" + topics.get(2).substring(26);
-            BigInteger amount = Numeric.toBigInt(lg.getData());
+            String topic0 = topics.get(0);
             long blockHeight = lg.getBlockNumber().longValue();
-            depositService.handleTransfer(c, coin, from, to, amount.longValue(),
-                    lg.getTransactionHash(), blockHeight);
+            if (TRANSFER_SINGLE_TOPIC.equalsIgnoreCase(topic0)) {
+                // ERC-1155 TransferSingle(operator,from,to,id,value)：topics[1..3]=operator/from/to，data=id;value
+                if (topics.size() < 4) return;
+                String from = "0x" + topics.get(2).substring(26);
+                String to = "0x" + topics.get(3).substring(26);
+                String[] data = lg.getData() == null ? new String[0] : lg.getData().substring(2).split("(?<=\\G.{64})");
+                if (data.length < 2) return;
+                String tokenId = Numeric.toBigInt("0x" + data[0]).toString();
+                long amount = Numeric.toBigInt("0x" + data[1]).longValue();
+                depositService.handleNftTransfer(c, coin, from, to, tokenId, amount,
+                        lg.getTransactionHash(), blockHeight);
+            } else if (TRANSFER_BATCH_TOPIC.equalsIgnoreCase(topic0)) {
+                // ERC-1155 TransferBatch(operator,from,to,ids,values)：topics[1..3]=operator/from/to，data=ids;values
+                if (topics.size() < 4) return;
+                String from = "0x" + topics.get(2).substring(26);
+                String to = "0x" + topics.get(3).substring(26);
+                String data = lg.getData() == null ? "" : lg.getData().substring(2);
+                // 解析两个动态数组 ids[] 与 values[]（ABI 编码：offset1;len1;ids...;offset2;len2;values...）
+                java.util.List<Long> ids = new java.util.ArrayList<>();
+                java.util.List<Long> values = new java.util.ArrayList<>();
+                if (data.length() >= 128) {
+                    int offIds = Numeric.toBigInt("0x" + data.substring(0, 64)).intValue() * 2;
+                    int lenIds = Numeric.toBigInt("0x" + data.substring(offIds, offIds + 64)).intValue();
+                    for (int i = 0; i < lenIds; i++) {
+                        ids.add(Numeric.toBigInt("0x" + data.substring(offIds + 64 + i * 64, offIds + 128 + i * 64)).longValue());
+                    }
+                    int offVals = Numeric.toBigInt("0x" + data.substring(64, 128)).intValue() * 2;
+                    int lenVals = Numeric.toBigInt("0x" + data.substring(offVals, offVals + 64)).intValue();
+                    for (int i = 0; i < lenVals; i++) {
+                        values.add(Numeric.toBigInt("0x" + data.substring(offVals + 64 + i * 64, offVals + 128 + i * 64)).longValue());
+                    }
+                }
+                for (int i = 0; i < ids.size() && i < values.size(); i++) {
+                    depositService.handleNftTransfer(c, coin, from, to, ids.get(i).toString(), values.get(i),
+                            lg.getTransactionHash(), blockHeight);
+                }
+            } else {
+                // ERC-20 / ERC-721：Transfer(from,to,idOrValue)
+                if (topics.size() < 3) {
+                    return;
+                }
+                String from = "0x" + topics.get(1).substring(26);
+                String to = "0x" + topics.get(2).substring(26);
+                if ("ERC-721".equalsIgnoreCase(coin.getTokenStandard())) {
+                    // ERC-721：topics[3] 是 tokenId，amount 恒为 1（data 通常为空，不可作 value）
+                    if (topics.size() < 4) {
+                        return;
+                    }
+                    String tokenId = Numeric.toBigInt(topics.get(3)).toString();
+                    depositService.handleNftTransfer(c, coin, from, to, tokenId, 1L,
+                            lg.getTransactionHash(), blockHeight);
+                } else {
+                    // ERC-20（或未标注）：data 为金额 value
+                    BigInteger value = Numeric.toBigInt(lg.getData());
+                    depositService.handleTransfer(c, coin, from, to, value.longValue(),
+                            lg.getTransactionHash(), blockHeight);
+                }
+            }
         } catch (Exception e) {
             log.warn("[scan] Transfer 日志解析失败: {}", e.getMessage());
         }

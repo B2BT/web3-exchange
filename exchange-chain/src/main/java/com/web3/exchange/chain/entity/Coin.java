@@ -22,6 +22,8 @@ public class Coin extends BaseEntity {
     private String name;
     /** 币种类型:COIN=原生币,TOKEN=代币 */
     private String coinType;
+    /** 代币标准:ERC-20=同质化代币,ERC-721=NFT(非同质化),ERC-1155=半同质化(含NFT). 原生币/ERC20可空或ERC-20 */
+    private String tokenStandard;
     /** 所属链编码(关联t_chain) */
     private String chainCode;
     /** 代币合约地址(原生币为空) */

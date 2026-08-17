@@ -32,6 +32,12 @@ DEFAULT_STATE = {
     "deposit_tx_hash": "0x" + "ab" * 32,
     "broadcast_tx_hash": "0x" + "cd" * 32,
     "nonce": 5,
+    # ===== NFT（ERC-721）模拟充值 =====
+    "nft_contract": "0x5B38Da6a701c568545dCfcB03FcB875f56beddC4",   # 模拟 NFT 合约
+    "nft_token_id_hex": "0x0000000000000000000000000000000000000000000000000000000000000042",  # tokenId=66
+    "nft_deposit_tx_hash": "0x" + "ef" * 32,
+    "nft_log_block_number": 254,   # 0xfe，低于 latest_block 使确认数达标
+    "nft_log_index": "0x1",
 }
 
 _lock = threading.Lock()
@@ -67,6 +73,23 @@ def transfer_log(st):
     }
 
 
+def nft_transfer_log(st):
+    """ERC-721 Transfer(from,to,tokenId)：topics[3] 为 tokenId，data 为空，amount 概念为 1。"""
+    return {
+        "address": st["nft_contract"],
+        "topics": [
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            "0x0000000000000000000000001111111111111111111111111111111111111111",  # from
+            "0x000000000000000000000000" + st["deposit_address"][2:].lower().ljust(40, "a"),  # to
+            st["nft_token_id_hex"],   # tokenId=66
+        ],
+        "data": "0x",
+        "transactionHash": st["nft_deposit_tx_hash"],
+        "blockNumber": to_hex(st["nft_log_block_number"]),
+        "logIndex": st["nft_log_index"],
+    }
+
+
 def block_for(st, num):
     return {
         "number": to_hex(num),
@@ -82,7 +105,8 @@ def dispatch(method, params):
     if method == "eth_blockNumber":
         return to_hex(st["latest_block"])
     if method == "eth_getLogs":
-        return [transfer_log(st)]
+        # 返回 ERC-20 与 ERC-721(NFT) 两条 Transfer 日志，驱动两类充值扫描验证
+        return [transfer_log(st), nft_transfer_log(st)]
     if method == "eth_getBlockByNumber":
         # fullTx=false 返回 tx hashes 数组；fullTx=true 返回对象数组（此处给空，原生币验证可扩展）
         return block_for(st, int(params[0], 16))

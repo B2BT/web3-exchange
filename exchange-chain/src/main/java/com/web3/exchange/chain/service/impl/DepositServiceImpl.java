@@ -59,9 +59,26 @@ public class DepositServiceImpl extends ServiceImpl<DepositMapper, Deposit> impl
     @Transactional(rollbackFor = Exception.class)
     public void handleTransfer(Chain chain, Coin coin, String fromAddress, String toAddress,
                                long amount, String txHash, long blockHeight) {
+        handleTransferCore(chain, coin, fromAddress, toAddress, null, amount, txHash, blockHeight);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void handleNftTransfer(Chain chain, Coin coin, String fromAddress, String toAddress,
+                                  String tokenId, long amount, String txHash, long blockHeight) {
+        handleTransferCore(chain, coin, fromAddress, toAddress, tokenId, amount, txHash, blockHeight);
+    }
+
+    /** 入账命中核心：ERC-20/原生币(NFT tokenId=null) 与 NFT(tokenId!=null) 统一落单逻辑。 */
+    private void handleTransferCore(Chain chain, Coin coin, String fromAddress, String toAddress,
+                                    String tokenId, long amount, String txHash, long blockHeight) {
         // 1. 命中归属用户
         AssetAddress addr = findActiveAddress(chain.getChainCode(), toAddress);
-        if (addr == null || !addr.getSymbol().equalsIgnoreCase(coin.getSymbol())) {
+        if (addr == null) {
+            return;
+        }
+        // 同链充币地址可收多币种：ERC-20/原生币需 symbol 匹配；NFT 只校验链 + 地址归属（同一地址收同链所有 NFT 合约）
+        if (tokenId == null && !addr.getSymbol().equalsIgnoreCase(coin.getSymbol())) {
             return;
         }
         if (coin.getDepositEnabled() == null || coin.getDepositEnabled() != 1) {
@@ -78,18 +95,20 @@ public class DepositServiceImpl extends ServiceImpl<DepositMapper, Deposit> impl
                 .setFromAddress(fromAddress)
                 .setToAddress(toAddress)
                 .setAmount(amount)
+                .setTokenId(tokenId)
                 .setFee(0L)
                 .setTxHash(txHash)
                 .setBlockHeight(blockHeight)
                 .setConfirmations(0)
                 .setRequiredConfirmations(chain.getConfirmations())
                 .setStatus(0)
-                .setRemark("充值监听");
+                .setRemark(tokenId == null ? "充值监听" : "NFT充值监听");
         d.setId(id);
         try {
             this.save(d);
-            log.info("[deposit] 落单 tx={} user={} symbol={} amount={} block={}",
-                    txHash, addr.getUserId(), coin.getSymbol(), amount, blockHeight);
+            log.info("[deposit] {}落单 tx={} user={} symbol={} tokenId={} amount={} block={}",
+                    tokenId == null ? "" : "NFT", txHash, addr.getUserId(), coin.getSymbol(),
+                    tokenId, amount, blockHeight);
         } catch (DuplicateKeyException e) {
             // 已存在：仅更新确认数，不重复入账
             log.debug("[deposit] 重复 tx={}，仅更新确认数", txHash);
@@ -252,6 +271,20 @@ public class DepositServiceImpl extends ServiceImpl<DepositMapper, Deposit> impl
     }
 
     @Override
+    public Page<DepositVO> pageNftByUser(Long userId, int page, int size) {
+        Page<Deposit> p = this.page(new Page<>(Math.max(page, 1), Math.min(Math.max(size, 1), 100)),
+                new LambdaQueryWrapper<Deposit>()
+                        .eq(Deposit::getUserId, userId)
+                        .isNotNull(Deposit::getTokenId)
+                        .ne(Deposit::getTokenId, "")
+                        .in(Deposit::getStatus, 1, 2)   // 待确认/已入账的 NFT 资产
+                        .orderByDesc(Deposit::getId));
+        Page<DepositVO> voPage = new Page<>(p.getCurrent(), p.getSize(), p.getTotal());
+        voPage.setRecords(p.getRecords().stream().map(this::toVO).toList());
+        return voPage;
+    }
+
+    @Override
     public Deposit getByTxHash(String txHash) {
         return getOne(new LambdaQueryWrapper<Deposit>()
                 .eq(Deposit::getTxHash, txHash)
@@ -267,6 +300,7 @@ public class DepositServiceImpl extends ServiceImpl<DepositMapper, Deposit> impl
         vo.setFromAddress(d.getFromAddress());
         vo.setToAddress(d.getToAddress());
         vo.setAmount(d.getAmount());
+        vo.setTokenId(d.getTokenId());
         vo.setFee(d.getFee());
         vo.setTxHash(d.getTxHash());
         vo.setBlockHeight(d.getBlockHeight());

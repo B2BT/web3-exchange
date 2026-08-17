@@ -70,6 +70,14 @@ public class ChainController {
         return Result.success(depositService.pageByUser(userId, page, size));
     }
 
+    @Operation(summary = "NFT 资产列表（ERC-721/1155 已入账充值）")
+    @GetMapping("/nft/list")
+    public Result<Page<DepositVO>> nftList(@RequestParam("userId") Long userId,
+                                           @RequestParam(value = "page", defaultValue = "1") int page,
+                                           @RequestParam(value = "size", defaultValue = "20") int size) {
+        return Result.success(depositService.pageNftByUser(userId, page, size));
+    }
+
     @Operation(summary = "申请提现")
     @PostMapping("/withdraw/apply")
     public Result<WithdrawVO> withdrawApply(@Valid @RequestBody WithdrawApplyRequest req) {

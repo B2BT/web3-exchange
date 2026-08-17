@@ -22,6 +22,13 @@ public interface DepositService {
                         long amount, String txHash, long blockHeight);
 
     /**
+     * 处理 NFT 入账命中（ERC-721/1155）：比 ERC-20 多了 tokenId（NFT 唯一编号）。
+     * ERC-721 amount 固定 1；ERC-1155 amount 为数量。
+     */
+    void handleNftTransfer(Chain chain, Coin coin, String fromAddress, String toAddress,
+                           String tokenId, long amount, String txHash, long blockHeight);
+
+    /**
      * 确认数递增 + 达标入账（调 asset credit），返回本次入账的充值记录列表（仅新入账的）。
      */
     List<Deposit> confirmAndCredit(Chain chain, long latestBlock);
@@ -45,6 +52,9 @@ public interface DepositService {
 
     /** 用户充值记录分页。 */
     Page<DepositVO> pageByUser(Long userId, int page, int size);
+
+    /** 用户 NFT 资产分页（已入账 + tokenId 非空，即 ERC-721/1155 充值资产）。 */
+    Page<DepositVO> pageNftByUser(Long userId, int page, int size);
 
     /** 链上交易哈希对应的充值记录（幂等查询）。 */
     Deposit getByTxHash(String txHash);

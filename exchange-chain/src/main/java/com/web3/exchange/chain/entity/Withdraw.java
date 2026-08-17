@@ -34,6 +34,8 @@ public class Withdraw extends BaseEntity {
     private String toAddress;
     /** 提现金额(最小单位) */
     private Long amount;
+    /** NFT代币ID(ERC-721/1155提现指定; ERC-20为空) */
+    private String tokenId;
     /** 手续费(最小单位) */
     private Long fee;
     /** 实际到账=amount-fee(最小单位) */

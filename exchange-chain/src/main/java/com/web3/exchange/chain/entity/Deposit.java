@@ -33,6 +33,8 @@ public class Deposit extends BaseEntity {
     private String toAddress;
     /** 充值金额(最小单位) */
     private Long amount;
+    /** NFT代币ID(ERC-721/1155; ERC-20为空) */
+    private String tokenId;
     /** 网络手续费(最小单位) */
     private Long fee;
     /** 链上交易哈希 */
