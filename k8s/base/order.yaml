@@ -1,0 +1,65 @@
+# 示例：order 服务 Deployment + Service
+# 镜像由 ArgoCD 从 GHCR 拉取（ghcr.io/<owner>/web3-exchange-order）
+# 配置经 ConfigMap/环境变量注入（Nacos/MySQL/Redis 地址）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exchange-order
+  namespace: exchange
+  labels:
+    app: exchange-order
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exchange-order
+  template:
+    metadata:
+      labels:
+        app: exchange-order
+    spec:
+      containers:
+        - name: exchange-order
+          image: ghcr.io/b2bt/web3-exchange-order:latest
+          imagePullPolicy: IfNotPresent   # 本地 kind 用载入镜像；CI 推 GHCR 后可用 Always
+          ports:
+            - containerPort: 8104
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+            - name: JAVA_OPTS
+              value: "-Xms256m -Xmx512m"
+            # 基础设施地址（k8s 内部服务名）
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://mysql.exchange:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai"
+            - name: SPRING_CLOUD_NACOS_SERVER_ADDR
+              value: "nacos.exchange:8848"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8104
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exchange-order
+  namespace: exchange
+  labels:
+    app: exchange-order
+spec:
+  selector:
+    app: exchange-order
+  ports:
+    - name: http
+      port: 8104
+      targetPort: 8104
+  type: ClusterIP

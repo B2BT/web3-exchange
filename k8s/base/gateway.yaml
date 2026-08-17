@@ -1,0 +1,64 @@
+# 网关服务 Deployment + NodePort Service
+# NodePort 30080 直通宿主（kind-config 映射到 hostPort 38080）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exchange-gateway
+  namespace: exchange
+  labels:
+    app: exchange-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exchange-gateway
+  template:
+    metadata:
+      labels:
+        app: exchange-gateway
+    spec:
+      containers:
+        - name: exchange-gateway
+          image: ghcr.io/b2bt/web3-exchange-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+            - name: JAVA_OPTS
+              value: "-Xms256m -Xmx512m"
+            - name: SPRING_CLOUD_NACOS_SERVER_ADDR
+              value: "nacos.exchange:8848"
+            - name: SPRING_REDIS_HOST
+              value: "redis.exchange"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exchange-gateway
+  namespace: exchange
+  labels:
+    app: exchange-gateway
+spec:
+  selector:
+    app: exchange-gateway
+  type: NodePort
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080

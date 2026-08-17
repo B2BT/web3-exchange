@@ -1,0 +1,15 @@
+# kind 集群配置：单节点，为 15 微服务 + 基础设施预留资源
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: web3-dev
+nodes:
+  - role: control-plane
+    # 端口映射：网关 38080 直通宿主（避开本机 8080 网关冲突）
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 38080
+        protocol: TCP
+      # ArgoCD UI 38081
+      - containerPort: 30081
+        hostPort: 38081
+        protocol: TCP
