@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exchange-risk
+  namespace: exchange
+  labels:
+    app: exchange-risk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exchange-risk
+  template:
+    metadata:
+      labels:
+        app: exchange-risk
+    spec:
+      containers:
+      - name: exchange-risk
+        image: ghcr.io/b2bt/web3-exchange-risk:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8114
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: k8s
+        - name: JAVA_OPTS
+          value: -Xms256m -Xmx512m
+        - name: SPRING_CLOUD_NACOS_SERVER_ADDR
+          value: nacos.infra:8848
+        - name: SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR
+          value: nacos.infra:8848
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://mysql.infra:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+        - name: SPRING_DATA_REDIS_HOST
+          value: redis.infra
+        - name: ROCKETMQ_NAME_SERVER
+          value: rocketmq-namesrv.infra:9876
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: kafka.infra:9092
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 250m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+        readinessProbe:
+          tcpSocket:
+            port: 8114
+          initialDelaySeconds: 40
+          periodSeconds: 10
+
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exchange-risk
+  namespace: exchange
+  labels:
+    app: exchange-risk
+spec:
+  selector:
+    app: exchange-risk
+  ports:
+  - name: http
+    port: 8114
+    targetPort: 8114
+  type: ClusterIP

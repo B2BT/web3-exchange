@@ -1,0 +1,11 @@
+# Docker 构建上下文排除（.dockerignore 优先于 .gitignore）
+# 注意：不要排除 target/！构建需要 exchange-<svc>/target/*.jar
+node_modules
+.git
+*.log
+docs
+scripts
+sql
+contracts
+dev-env
+tools

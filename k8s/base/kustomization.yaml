@@ -5,3 +5,16 @@ resources:
   - namespace.yaml
   - order.yaml
   - gateway.yaml
+  - auth.yaml
+  - user.yaml
+  - asset.yaml
+  - market.yaml
+  - chain.yaml
+  - notify.yaml
+  - monitor.yaml
+  - admin.yaml
+  - margin.yaml
+  - staking.yaml
+  - risk.yaml
+  - ticket.yaml
+  - futures.yaml

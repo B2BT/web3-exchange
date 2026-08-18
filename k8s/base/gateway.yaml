@@ -29,9 +29,12 @@ spec:
             - name: JAVA_OPTS
               value: "-Xms256m -Xmx512m"
             - name: SPRING_CLOUD_NACOS_SERVER_ADDR
-              value: "nacos.exchange:8848"
-            - name: SPRING_REDIS_HOST
-              value: "redis.exchange"
+              value: "nacos.infra:8848"
+            # gateway 的 nacos 在 discovery 下配置，需单独覆盖
+            - name: SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR
+              value: "nacos.infra:8848"
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis.infra"
           resources:
             requests:
               memory: "256Mi"
@@ -40,11 +43,18 @@ spec:
               memory: "512Mi"
               cpu: "500m"
           readinessProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
+
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+
 ---
 apiVersion: v1
 kind: Service

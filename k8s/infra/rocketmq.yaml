@@ -1,0 +1,120 @@
+# RocketMQ（namesrv + broker）基础设施
+# 供各业务服务通过 rocketmq-namesrv.infra:9876 访问
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rocketmq-namesrv
+  namespace: infra
+  labels:
+    app: rocketmq-namesrv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rocketmq-namesrv
+  template:
+    metadata:
+      labels:
+        app: rocketmq-namesrv
+    spec:
+      containers:
+        - name: namesrv
+          image: apache/rocketmq:5.3.0
+          command: ["sh", "mqnamesrv"]
+          ports:
+            - containerPort: 9876
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            tcpSocket:
+              port: 9876
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rocketmq-namesrv
+  namespace: infra
+  labels:
+    app: rocketmq-namesrv
+spec:
+  selector:
+    app: rocketmq-namesrv
+  ports:
+    - name: namesrv
+      port: 9876
+      targetPort: 9876
+---
+# broker（连 namesrv）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rocketmq-broker
+  namespace: infra
+  labels:
+    app: rocketmq-broker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rocketmq-broker
+  template:
+    metadata:
+      labels:
+        app: rocketmq-broker
+    spec:
+      initContainers:
+        - name: wait-namesrv
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z rocketmq-namesrv.infra 9876; do echo waiting namesrv; sleep 3; done"]
+      containers:
+        - name: broker
+          image: apache/rocketmq:5.3.0
+          # 限制 JVM 堆（JAVA_OPT_EXT），避免 OOM
+          command: ["sh", "mqbroker", "-n", "rocketmq-namesrv.infra:9876", "-c", "/home/rocketmq/rocketmq-5.3.0/conf/broker.conf"]
+          ports:
+            - containerPort: 10911
+            - containerPort: 10909
+          env:
+            - name: NAMESRV_ADDR
+              value: rocketmq-namesrv.infra:9876
+            - name: TZ
+              value: Asia/Shanghai
+            - name: JAVA_OPT_EXT
+              value: "-Xms512m -Xmx768m -XX:MaxDirectMemorySize=256m"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1536Mi"
+              cpu: "1000m"
+          readinessProbe:
+            tcpSocket:
+              port: 10911
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rocketmq-broker
+  namespace: infra
+  labels:
+    app: rocketmq-broker
+spec:
+  selector:
+    app: rocketmq-broker
+  ports:
+    - name: broker
+      port: 10911
+      targetPort: 10911

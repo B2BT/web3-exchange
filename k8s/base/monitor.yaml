@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exchange-monitor
+  namespace: exchange
+  labels:
+    app: exchange-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exchange-monitor
+  template:
+    metadata:
+      labels:
+        app: exchange-monitor
+    spec:
+      containers:
+      - name: exchange-monitor
+        image: ghcr.io/b2bt/web3-exchange-monitor:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8108
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: k8s
+        - name: JAVA_OPTS
+          value: -Xms256m -Xmx512m
+        - name: SPRING_CLOUD_NACOS_SERVER_ADDR
+          value: nacos.infra:8848
+        - name: SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR
+          value: nacos.infra:8848
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://mysql.infra:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+        - name: SPRING_DATA_REDIS_HOST
+          value: redis.infra
+        - name: ROCKETMQ_NAME_SERVER
+          value: rocketmq-namesrv.infra:9876
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: kafka.infra:9092
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 250m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+        readinessProbe:
+          tcpSocket:
+            port: 8108
+          initialDelaySeconds: 40
+          periodSeconds: 10
+
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exchange-monitor
+  namespace: exchange
+  labels:
+    app: exchange-monitor
+spec:
+  selector:
+    app: exchange-monitor
+  ports:
+  - name: http
+    port: 8108
+    targetPort: 8108
+  type: ClusterIP

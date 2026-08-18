@@ -1,0 +1,80 @@
+# Nacos 注册/配置中心（Deployment + Service）
+# 供各业务服务通过 nacos.infra:8848 注册发现；后端用 MySQL(nacos_config 库)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nacos
+  namespace: infra
+  labels:
+    app: nacos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nacos
+  template:
+    metadata:
+      labels:
+        app: nacos
+    spec:
+      initContainers:
+        # 等 MySQL 就绪
+        - name: wait-mysql
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z mysql.infra 3306; do echo waiting mysql; sleep 3; done"]
+      containers:
+        - name: nacos
+          image: nacos/nacos-server:v2.4.0
+          ports:
+            - containerPort: 8848
+            - containerPort: 9848
+          env:
+            - name: MODE
+              value: standalone
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: mysql
+            - name: MYSQL_SERVICE_HOST
+              value: mysql.infra
+            - name: MYSQL_SERVICE_PORT
+              value: "3306"
+            - name: MYSQL_SERVICE_DB_NAME
+              value: nacos_config
+            - name: MYSQL_SERVICE_USER
+              value: nacos
+            - name: MYSQL_SERVICE_PASSWORD
+              value: nacos
+            - name: MYSQL_SERVICE_DB_PARAM
+              value: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true"
+            - name: TZ
+              value: Asia/Shanghai
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /nacos/v1/console/health/readiness
+              port: 8848
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+  namespace: infra
+  labels:
+    app: nacos
+spec:
+  selector:
+    app: nacos
+  ports:
+    - name: http
+      port: 8848
+      targetPort: 8848
+    - name: grpc
+      port: 9848
+      targetPort: 9848

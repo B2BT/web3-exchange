@@ -29,11 +29,15 @@ spec:
               value: k8s
             - name: JAVA_OPTS
               value: "-Xms256m -Xmx512m"
-            # 基础设施地址（k8s 内部服务名）
+            # 基础设施地址（k8s infra namespace 服务名）
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:mysql://mysql.exchange:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai"
+              value: "jdbc:mysql://mysql.infra:3306/web3_exchange?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai"
             - name: SPRING_CLOUD_NACOS_SERVER_ADDR
-              value: "nacos.exchange:8848"
+              value: "nacos.infra:8848"
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis.infra"
+            - name: ROCKETMQ_NAME_SERVER
+              value: "rocketmq-namesrv.infra:9876"
           resources:
             requests:
               memory: "256Mi"
@@ -42,11 +46,18 @@ spec:
               memory: "512Mi"
               cpu: "500m"
           readinessProbe:
-            httpGet:
-              path: /actuator/health
+            tcpSocket:
               port: 8104
             initialDelaySeconds: 30
             periodSeconds: 10
+
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+
 ---
 apiVersion: v1
 kind: Service
