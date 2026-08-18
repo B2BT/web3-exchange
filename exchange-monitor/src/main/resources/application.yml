@@ -44,6 +44,10 @@ management:
   endpoint:
     health:
       show-details: always
+  # 分布式链路追踪（Micrometer Tracing → Zipkin）
+  tracing:
+    sampling:
+      probability: 1.0   # 全采样（演示/排查场景；生产可按需降低如0.1）
 
 # 最简SpringDoc配置
 springdoc:
@@ -57,9 +61,3 @@ springdoc:
 logging:
   level:
     com.web3.exchange.monitor: info
-
-# 分布式链路追踪（Micrometer Tracing → Zipkin）
-management:
-  tracing:
-    sampling:
-      probability: 1.0   # 全采样（演示/排查场景；生产可按需降低如0.1）

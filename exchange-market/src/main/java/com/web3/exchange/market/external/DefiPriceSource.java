@@ -58,7 +58,7 @@ public class DefiPriceSource {
     private String defiRpcUrl;
 
     /** symbol → Uniswap V2 Pair 配置（application.yml 注入） */
-    @Value("#{${server-settings.external-price.defi-pairs:}}")
+    @Value("#{${server-settings.external-price.defi-pairs: {}}}")
     private Map<String, Map<String, String>> defiPairs;
 
     /** 按需创建 Web3j（懒加载，避免无链环境启动失败） */
