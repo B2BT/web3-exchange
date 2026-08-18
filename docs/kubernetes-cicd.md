@@ -54,10 +54,27 @@ kubectl apply -k k8s/base
 
 ### 4. ArgoCD 应用（GitOps 自动同步）
 ```bash
-# 需配置 GitHub repo 凭据（私有 repo 用 SSH 或 HTTPS token）：
-#   argocd repo add git@github.com:B2BT/web3-exchange.git --ssh-private-key-path ~/.ssh/id_rsa
-kubectl apply -f k8s/argocd-app.yaml
+# 方式 A：HTTPS + PAT（推荐，需 GitHub PAT：repo 权限）
+argocd login localhost:38081 --username admin --password <初始密码> --insecure --grpc-web
+argocd repo add https://github.com/B2BT/web3-exchange.git \
+  --username <github用户名> --password <PAT> --insecure-skip-server-verification
+kubectl apply -f k8s/argocd-app.yaml   # 应用时把 repoURL 改为 HTTPS 地址
 # ArgoCD 检测 main 分支 k8s/ 清单变化 → 自动同步部署
+
+# 方式 B：SSH key（本机 SSH 通但 ArgoCD 容器内 handshake 失败时，检查 key 为 OpenSSH 格式）
+argocd repo add git@github.com:B2BT/web3-exchange.git \
+  --ssh-private-key-path ~/.ssh/id_ed25519 --insecure-ignore-host-key
+```
+
+### 5. 全量部署验证（本地 kind，已实测）
+```bash
+# 构建全部镜像 + 载入 kind（15 服务）
+./k8s/build-all.sh
+# 部署基础设施 + 全量服务
+kubectl apply -k k8s/infra
+kubectl apply -k k8s/base
+# 经网关访问（NodePort 38080）
+curl localhost:38080/api/market/ticker/list   # → 200 真实行情
 ```
 
 ## 目录结构
@@ -78,19 +95,36 @@ k8s/
 ## 已验证
 
 - ✅ kind 集群创建、节点 Ready
-- ✅ ArgoCD 7 组件全部 Running
+- ✅ ArgoCD 7 组件全部 Running（CLI 登录成功）
 - ✅ CI 流水线配置：Maven 构建 + 15 服务镜像矩阵推送 GHCR
-- ✅ 本地构建 order/gateway 镜像成功、载入 kind、清单部署成功
-- ✅ 容器正常启动（JSON 日志格式，serviceName=exchange-order）
-- ✅ kustomize 清单校验通过
+- ✅ 基础设施 k8s 化：MySQL(StatefulSet+PVC)/Redis/Nacos/Kafka(KRaft)/RocketMQ 全部 Running
+  - SQL schema 从本机 dev-mysql 导出导入（nacos_config + web3_exchange 46 表）
+  - Kafka topic 创建成功、RocketMQ broker 注册正常
+- ✅ **全量 15 个服务部署到 k8s，全部 Ready**
+  - 经网关 38080：`/api/market/ticker/list` → 200 + 7 个真实 ticker（BTC $64k+ 等）
+  - `/api/market/kline/list` → 200 真实 K 线；auth/chain/asset 鉴权 401（正常）
+  - Binance WS 真实行情 → Kafka 管道 → 聚合器全链路工作
+- ✅ kustomize 清单校验通过（31 资源）
+
+## 排坑记录（k8s 部署实战）
+
+1. **日志目录 /logs 不可写**：Logback 写 /logs/<svc>/app.log，pod 内目录不存在 → Spring 上下文异常 → Controller 不注册 → 接口全"404/500"。修复：Deployment 挂 emptyDir 到 /logs。
+2. **readiness 探针**：部分服务无 actuator，HTTP 探针 404 永不就绪 → 改用 TCP 探针。
+3. **market 启动失败**：DefiPriceSource `@Value("#{...:}}")` 空 SpEL 默认值解析异常 → 改 `: {}}`。
+4. **monitor 启动失败**：application.yml 重复 management 段（YAML DuplicateKey）→ 合并。
+5. **Nacos 注册**：gateway 的 nacos 在 `discovery` 下配置，需 `SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR` 单独覆盖。
+6. **Kafka readiness**：探针用 service 名连不上（endpoints 空死循环）→ 用 localhost 直连。
+7. **RocketMQ OOM**：默认 JVM 堆超容器 limit → JAVA_OPT_EXT 限堆 + 提高 limit。
 
 ## 注意点
 
-1. **镜像拉取策略**：清单用 `imagePullPolicy: IfNotPresent`（本地 kind 用载入镜像）；CI 推 GHCR 后可改 Always。
-2. **基础设施**：最小集验证不含 MySQL/Nacos/Redis/Kafka/ELK 的 k8s 化（它们仍在 Docker 跑）。容器因 Nacos 不可达而启动失败是预期的，需在 k8s 部署基础设施或配置外部地址。
-3. **私有 repo**：ArgoCD 拉取需配 SSH/HTTPS 凭据。
-4. **imagePullPolicy=latest**：生产建议用不可变 tag（sha）。
+1. **镜像**：本地 kind 用 `kind load` + `imagePullPolicy: IfNotPresent`；CI 推 GHCR 后可改 Always。
+2. **生产 tag**：latest 触发生成问题，生产建议用不可变 tag（sha）。
+3. **私有 repo**：ArgoCD 拉取需 HTTPS+PAT（推荐）或 SSH key（容器内 handshake 可能失败）。
+4. **CI 验证**：需 GitHub PAT 查看 Actions 运行；并发环境可用 build-all.sh 本地验证镜像构建。
 
 ## 完整生产部署（后续）
 
-将 MySQL/Nacos/Redis/Kafka/ELK 也 k8s 化（StatefulSet/PVC），服务 env 指向集群内基础设施（`mysql.exchange`/`nacos.exchange` 等），即可全量部署。
+- **ArgoCD 全自动**：配好 repo 凭据后，push main → CI 推镜像 → ArgoCD 自动同步清单（GitOps 闭环）
+- **ELK**：可 k8s 化（StatefulSet/PVC），Filebeat 采集 /logs（emptyDir 已挂载）
+- **多副本**：内存态服务（futures 撮合簿、market 聚合器）需处理多副本一致性
