@@ -96,15 +96,16 @@ k8s/
 
 - ✅ kind 集群创建、节点 Ready
 - ✅ ArgoCD 7 组件全部 Running（CLI 登录成功）
-- ✅ CI 流水线配置：Maven 构建 + 15 服务镜像矩阵推送 GHCR
+- ✅ CI 流水线：GitHub Actions **16 job 全成功**，**GHCR 15 个镜像** 已推送
 - ✅ 基础设施 k8s 化：MySQL(StatefulSet+PVC)/Redis/Nacos/Kafka(KRaft)/RocketMQ 全部 Running
   - SQL schema 从本机 dev-mysql 导出导入（nacos_config + web3_exchange 46 表）
   - Kafka topic 创建成功、RocketMQ broker 注册正常
 - ✅ **全量 15 个服务部署到 k8s，全部 Ready**
   - 经网关 38080：`/api/market/ticker/list` → 200 + 7 个真实 ticker（BTC $64k+ 等）
   - `/api/market/kline/list` → 200 真实 K 线；auth/chain/asset 鉴权 401（正常）
-  - Binance WS 真实行情 → Kafka 管道 → 聚合器全链路工作
-- ✅ kustomize 清单校验通过（31 资源）
+- ✅ **ArgoCD GitOps 闭环打通**（HTTPS+PAT 拉私有 repo）
+  - `push main → ArgoCD 自动同步 → 集群全部 Synced+Healthy`
+  - 服务端到端可用
 
 ## 排坑记录（k8s 部署实战）
 
