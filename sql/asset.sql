@@ -208,7 +208,7 @@ CREATE TABLE `t_withdraw` (
                               `amount` bigint NOT NULL COMMENT '提现金额(最小单位)',
                               `fee` bigint NOT NULL DEFAULT '0' COMMENT '手续费(最小单位)',
                               `real_amount` bigint NOT NULL COMMENT '实际到账=amount-fee(最小单位)',
-                              `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态:0=待审核,1=审核中,2=处理中(已冻结上链),3=成功,4=拒绝,5=失败回滚',
+                              `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态:0=待审核,1=审核中,2=处理中(已冻结上链),3=成功,4=拒绝,5=失败回滚,6=待冷钱包签名,7=冷签名完成待广播,8=初审通过待复核',
                               `audit_by` varchar(64) DEFAULT NULL COMMENT '审核人',
                               `audit_time` datetime DEFAULT NULL COMMENT '审核时间',
                               `audit_remark` varchar(255) DEFAULT NULL COMMENT '审核备注',

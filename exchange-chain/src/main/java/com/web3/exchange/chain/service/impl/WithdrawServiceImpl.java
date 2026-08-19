@@ -144,21 +144,41 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
         if (w == null) {
             throw new NotFoundException("提现单不存在: " + withdrawId);
         }
-        if (w.getStatus() == null || (w.getStatus() != 0 && w.getStatus() != 1)) {
+        if (w.getStatus() == null || (w.getStatus() != 0 && w.getStatus() != 1 && w.getStatus() != 8)) {
             throw new BusinessException("当前状态不可审核: status=" + w.getStatus());
         }
         boolean approve = Boolean.TRUE.equals(req.getApprove());
         String remark = req.getRemark();
+        String reviewer = req.getReviewer() == null || req.getReviewer().isBlank() ? "admin" : req.getReviewer();
+        int level = req.getLevel() == null ? 1 : req.getLevel();
 
-        // 1. 状态抢占（乐观锁 + status 条件）：0/1 → 处理中(2) 或 拒绝(4)
+        if (level == 2) {
+            // ===== 复核（第二审核员）=====
+            if (w.getStatus() != null && w.getStatus() != 8) {
+                throw new BusinessException("复核仅对'待复核'状态(status=8)的提现单执行");
+            }
+            // 复核人须与初审不同（同一审核员不可既审又复）
+            if (reviewer.equalsIgnoreCase(w.getAuditBy()) && w.getAuditBy() != null) {
+                throw new BusinessException("复核人不能与初审为同一审核员");
+            }
+            if (approve) {
+                // 复核通过 → 冻结 + 上链（原初审的步骤 2/3 逻辑）
+                return reviewApproveAndChain(withdrawId, w, reviewer, remark);
+            } else {
+                return doReject(withdrawId, reviewer, remark);
+            }
+        }
+
+        // ===== 初审（第一审核员）=====
         LambdaUpdateWrapper<Withdraw> uw = new LambdaUpdateWrapper<>();
         uw.eq(Withdraw::getId, withdrawId)
                 .in(Withdraw::getStatus, 0, 1)
-                .set(Withdraw::getAuditBy, "admin")
+                .set(Withdraw::getAuditBy, reviewer)
                 .set(Withdraw::getAuditTime, LocalDateTime.now())
                 .set(Withdraw::getAuditRemark, remark);
         if (approve) {
-            uw.set(Withdraw::getStatus, 2);
+            // 初审通过 → 进入"待复核"(status=8)，由复核员确认后真正冻结上链
+            uw.set(Withdraw::getStatus, 8);
         } else {
             uw.set(Withdraw::getStatus, 4);
         }
@@ -167,11 +187,29 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
             throw new BusinessException("审核并发冲突，请重试");
         }
         if (!approve) {
-            log.info("[withdraw] 审核拒绝 id={}", withdrawId);
+            log.info("[withdraw] 初审拒绝 id={} reviewer={}", withdrawId, reviewer);
             return toVO(getById(withdrawId));
         }
+        log.info("[withdraw] 初审通过 待复核 id={} reviewer={}", withdrawId, reviewer);
+        return toVO(getById(withdrawId));
+    }
 
-        // 2. 冻结（进入处理中前锁定资金）
+    /** 复核通过后执行冻结 + 上链（原初审 approve 的后续逻辑）。 */
+    private WithdrawVO reviewApproveAndChain(Long withdrawId, Withdraw w, String reviewer, String remark) {
+        // 状态抢占：8 → 处理中(2)
+        LambdaUpdateWrapper<Withdraw> uw = new LambdaUpdateWrapper<>();
+        uw.eq(Withdraw::getId, withdrawId)
+                .eq(Withdraw::getStatus, 8)
+                .set(Withdraw::getAuditBy, reviewer)
+                .set(Withdraw::getAuditTime, LocalDateTime.now())
+                .set(Withdraw::getAuditRemark, remark)
+                .set(Withdraw::getStatus, 2);
+        boolean claimed = this.update(uw);
+        if (!claimed) {
+            throw new BusinessException("复核并发冲突，请重试");
+        }
+
+        // 冻结（进入处理中前锁定资金）
         Chain chain = chainService.getByChainCode(w.getChainCode());
         Coin coin = coinService.getBySymbol(w.getSymbol());
         FreezeRequest freezeReq = new FreezeRequest();
@@ -181,7 +219,7 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
         freezeReq.setAmount(w.getAmount());
         freezeReq.setBizType("FREEZE");
         freezeReq.setRefNo(String.valueOf(withdrawId));
-        freezeReq.setRemark("提现冻结");
+        freezeReq.setRemark("提现冻结(复核通过)");
         try {
             Result<LedgerVO> fr = assetClient.freeze(freezeReq);
             if (fr == null || !fr.isSuccess() || fr.getData() == null) {
@@ -191,28 +229,38 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
             this.update(new LambdaUpdateWrapper<Withdraw>()
                     .eq(Withdraw::getId, withdrawId)
                     .set(Withdraw::getFreezeLedgerId, fr.getData().getId()));
-            log.info("[withdraw] 冻结成功 id={} ledgerId={}", withdrawId, fr.getData().getId());
+            log.info("[withdraw] 复核通过 冻结成功 id={} ledgerId={}", withdrawId, fr.getData().getId());
         } catch (Exception e) {
             failRollback(withdrawId, "冻结异常: " + e.getMessage());
             return toVO(getById(withdrawId));
         }
 
-        // 3. 离线签名 + 广播（或进入冷钱包待签）
+        // 离线签名 + 广播（或进入冷钱包待签）
         try {
             String txHash = broadcast(w, chain, coin);
             if (txHash != null && txHash.startsWith("COLD_PENDING_")) {
-                // 冷钱包流程：已转待签状态，不刷新 txHash
                 log.info("[withdraw] 已进入冷钱包待签 id={}", withdrawId);
             } else {
                 this.update(new LambdaUpdateWrapper<Withdraw>()
                         .eq(Withdraw::getId, withdrawId)
                         .set(Withdraw::getTxHash, txHash));
-                log.info("[withdraw] 广播成功 id={} txHash={}", withdrawId, txHash);
+                log.info("[withdraw] 复核通过 广播成功 id={} txHash={}", withdrawId, txHash);
             }
         } catch (Exception e) {
             log.warn("[withdraw] 广播失败 id={}: {}", withdrawId, e.getMessage());
             unfreezeRollback(withdrawId, "上链失败: " + e.getMessage());
         }
+        return toVO(getById(withdrawId));
+    }
+
+    private WithdrawVO doReject(Long withdrawId, String reviewer, String remark) {
+        this.update(new LambdaUpdateWrapper<Withdraw>()
+                .eq(Withdraw::getId, withdrawId)
+                .set(Withdraw::getAuditBy, reviewer)
+                .set(Withdraw::getAuditTime, LocalDateTime.now())
+                .set(Withdraw::getAuditRemark, remark)
+                .set(Withdraw::getStatus, 4));
+        log.info("[withdraw] 复核拒绝 id={} reviewer={}", withdrawId, reviewer);
         return toVO(getById(withdrawId));
     }
 
