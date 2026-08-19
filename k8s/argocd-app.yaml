@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:B2BT/web3-exchange.git
+    repoURL: https://github.com/B2BT/web3-exchange.git
     path: k8s/base
     targetRevision: main
     kustomize: {}
