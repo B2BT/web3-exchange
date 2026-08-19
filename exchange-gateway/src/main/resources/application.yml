@@ -209,7 +209,8 @@ spring:
     database: 0
 
 jwt:
-  secret: web3-exchange-dev-hs512-jwt-secret-key-2026-0804-please-use-at-least-64-chars
+  # 生产从环境变量 JWT_SECRET 注入（K8s Secret/Vault/KMS）；默认值仅本地开发兜底
+  secret: ${JWT_SECRET:web3-exchange-dev-hs512-jwt-secret-key-2026-0804-please-use-at-least-64-chars}
 
 # 分布式链路追踪（Micrometer Tracing → Zipkin）
 management:

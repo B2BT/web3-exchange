@@ -86,16 +86,16 @@ chain:
     batch-size: 100
     start-block: 0
     safety-window: 3
-  # 热钱包（仅 Mock/测试网；生产严禁明文）
+  # 热钱包（仅 Mock/测试网；生产严禁明文，用环境变量 CHAIN_HOT_PRIVATE_KEY / KMS 注入）
   hot-wallet:
     platform-user-id: 900004
-    private-key: ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-  # HD 钱包（BIP44 每用户充币地址派生；仅 Mock/测试网，生产用 KMS/HSM）
+    private-key: ${CHAIN_HOT_PRIVATE_KEY:ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+  # HD 钱包（BIP44 每用户充币地址派生；生产用 CHAIN_HD_MNEMONIC / KMS/HSM）
   hd-wallet:
-    mnemonic: "test test test test test test test test test test test junk"
-  # 自托管钱包（用户创建/导入钱包的私钥加密；仅 Mock/测试网，生产用 KMS/HSM）
+    mnemonic: "${CHAIN_HD_MNEMONIC:test test test test test test test test test test test junk}"
+  # 自托管钱包（用户私钥加密；生产用 CHAIN_SELF_ENCRYPT_SECRET / KMS）
   self-wallet:
-    encrypt-secret: "mock-self-wallet-encrypt-secret-0123456789"
+    encrypt-secret: "${CHAIN_SELF_ENCRYPT_SECRET:mock-self-wallet-encrypt-secret-0123456789}"
   # 提现冷热分流：大额冷钱包离线签名，小额热钱包在线签名
   withdraw:
     # 阈值(最小单位)：>= 该值走冷钱包。USDT 6位小数 -> 500000=0.5 USDT；实际需按币精度配置

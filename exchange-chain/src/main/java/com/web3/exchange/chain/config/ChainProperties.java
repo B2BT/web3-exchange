@@ -12,7 +12,33 @@ import org.springframework.stereotype.Component;
 @Data
 @Component
 @ConfigurationProperties(prefix = "chain")
-public class ChainProperties {
+public class ChainProperties implements org.springframework.beans.factory.InitializingBean {
+
+    @Override
+    public void afterPropertiesSet() {
+        // 生产防呆：以 prod profile 启动且仍用开发/默认密钥时，拒绝启动（防止 mock 私钥带到生产）
+        String profile = System.getenv("SPRING_PROFILES_ACTIVE");
+        if (profile == null || !profile.contains("prod")) {
+            return;
+        }
+        String devHot = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+        boolean devDefault = (hotWallet.getPrivateKey() != null && hotWallet.getPrivateKey().equals(devHot))
+                || (hdWallet.getMnemonic() != null && hdWallet.getMnemonic().contains("test test test"))
+                || (selfWallet.getEncryptSecret() != null && selfWallet.getEncryptSecret().contains("mock-self-wallet"));
+        if (devDefault) {
+            throw new IllegalStateException("生产环境禁用开发/默认钱包密钥！请通过环境变量/KMS/Vault 注入 "
+                    + "(CHAIN_HOT_PRIVATE_KEY / CHAIN_HD_MNEMONIC / CHAIN_SELF_ENCRYPT_SECRET)");
+        }
+    }
+
+    /**
+     * 开发环境默认 hot 私钥标记（供 prod 防呆与工具识别）
+     * @return 是否使用开发默认热钱包私钥
+     */
+    public boolean isDevHotWallet() {
+        String devHot = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+        return devHot.equals(hotWallet.getPrivateKey());
+    }
 
     /** 充值区块扫描 */
     private Scan scan = new Scan();
