@@ -47,6 +47,12 @@ public class FuturesMatchingEngine {
         return book != null && book.remove(orderNo);
     }
 
+    /** 重启恢复：将一活跃限价单直接挂入对应交易对订单簿（不撮合）。供启动重建。 */
+    public synchronized void restore(String symbol, FuturesOrder order) {
+        OrderBook book = books.computeIfAbsent(symbol, k -> new OrderBook());
+        book.restoreMaker(order);
+    }
+
     /** 查询当前买一/卖一（合约深度，公开用）。 */
     public synchronized long[] best(String symbol) {
         OrderBook book = books.get(symbol);
@@ -142,6 +148,18 @@ public class FuturesMatchingEngine {
                 index.put(taker.getOrderNo(), taker);
             }
             return res;
+        }
+
+        /** 恢复：将一活跃限价单直接挂入簿（不撮合，用其 remaining）。供重启重建订单簿。 */
+        void restoreMaker(FuturesOrder o) {
+            boolean buy = isBuy(o);
+            List<FuturesOrder> list = (buy ? bids : asks).computeIfAbsent(o.getPrice(), k -> new ArrayList<>());
+            // 避免重复恢复（幂等）
+            if (index.containsKey(o.getOrderNo())) {
+                return;
+            }
+            list.add(o);
+            index.put(o.getOrderNo(), o);
         }
 
         boolean remove(String orderNo) {
