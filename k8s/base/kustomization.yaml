@@ -18,3 +18,4 @@ resources:
   - risk.yaml
   - ticket.yaml
   - futures.yaml
+  - hpa.yaml

@@ -9,9 +9,11 @@ import com.web3.exchange.futures.engine.FuturesMatchingEngine;
 import com.web3.exchange.futures.entity.FuturesOrder;
 import com.web3.exchange.futures.entity.FuturesPosition;
 import com.web3.exchange.futures.entity.SwapContract;
+import com.web3.exchange.futures.entity.FuturesFillEntity;
 import com.web3.exchange.futures.mapper.FuturesOrderMapper;
 import com.web3.exchange.futures.mapper.FuturesPositionMapper;
 import com.web3.exchange.futures.mapper.SwapContractMapper;
+import com.web3.exchange.futures.mapper.FuturesFillMapper;
 import com.web3.exchange.futures.service.FuturesAccountService;
 import com.web3.exchange.futures.service.FuturesTradeService;
 import com.web3.exchange.futures.service.MarkPriceService;
@@ -47,6 +49,7 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
     private final FuturesOrderMapper orderMapper;
     private final FuturesPositionMapper positionMapper;
     private final SwapContractMapper contractMapper;
+    private final FuturesFillMapper fillMapper;
     private final FuturesMatchingEngine matchingEngine;
     private final FuturesAccountService accountService;
     private final MarkPriceService markPriceService;
@@ -125,6 +128,24 @@ public class FuturesTradeServiceImpl implements FuturesTradeService {
         for (var e : byUser.entrySet()) {
             Long uid = e.getKey();
             for (FuturesFill f : e.getValue()) {
+                // 持久化成交明细（历史不丢失）
+                FuturesFillEntity fe = new FuturesFillEntity();
+                fe.setOrderNo(order.getOrderNo());
+                fe.setUserId(uid);
+                fe.setCounterUserId(callerUserId.equals(uid) ? null : callerUserId);
+                fe.setSymbol(order.getSymbol());
+                fe.setSide(f.getSide());
+                fe.setPrice(f.getPrice());
+                fe.setQuantity(f.getQuantity());
+                fe.setNotional(notional(f.getQuantity(), f.getPrice()));
+                fe.setFee(0L);
+                fe.setTradeRole(callerUserId.equals(uid) ? 0 : 1);
+                fe.setCreateTime(java.time.LocalDateTime.now());
+                try {
+                    fillMapper.insert(fe);
+                } catch (Exception ex) {
+                    log.warn("[futures] 成交明细落库失败 order={} uid={}: {}", order.getOrderNo(), uid, ex.getMessage());
+                }
                 applySingleFill(uid, c, order, f);
             }
         }

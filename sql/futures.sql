@@ -104,6 +104,26 @@ CREATE TABLE IF NOT EXISTS t_futures_order (
 ) ENGINE=InnoDB COMMENT='永续合约订单';
 
 -- ============================================================
+-- 成交明细（t_futures_fill）：逐笔成交历史持久化，重启不丢失，供行情/审计/历史查询
+-- ============================================================
+CREATE TABLE IF NOT EXISTS t_futures_fill (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_no VARCHAR(40) NOT NULL COMMENT '来源合约订单号(taker落true单号)',
+  user_id BIGINT NOT NULL COMMENT '成交用户(taker或maker)',
+  counter_user_id BIGINT DEFAULT NULL COMMENT '对手方用户',
+  symbol VARCHAR(32) NOT NULL COMMENT '交易对',
+  side INT NOT NULL COMMENT '1=开多 2=开空 3=平多 4=平空',
+  price BIGINT NOT NULL COMMENT '成交价(最小单位)',
+  quantity BIGINT NOT NULL COMMENT '成交数量(最小单位)',
+  notional BIGINT NOT NULL DEFAULT 0 COMMENT '名义金额(最小单位)',
+  fee BIGINT NOT NULL DEFAULT 0 COMMENT '手续费(最小单位)',
+  trade_role INT NOT NULL DEFAULT 0 COMMENT '0=taker 1=maker',
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_user (user_id, create_time),
+  KEY idx_symbol (symbol, create_time)
+) ENGINE=InnoDB COMMENT='永续合约成交明细';
+
+-- ============================================================
 -- 种子数据：永续合约交易对（7 主流币 USDT 本位永续，幂等插入）
 -- ============================================================
 INSERT IGNORE INTO t_swap_contract
