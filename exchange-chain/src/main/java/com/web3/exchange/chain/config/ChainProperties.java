@@ -26,6 +26,9 @@ public class ChainProperties {
     /** 自托管钱包（用户创建/导入钱包的私钥加密） */
     private SelfWallet selfWallet = new SelfWallet();
 
+    /** 提现配置（冷热钱包分流） */
+    private Withdraw withdraw = new Withdraw();
+
     @Data
     public static class Scan {
         /** 是否开启扫描 */
@@ -60,5 +63,14 @@ public class ChainProperties {
     public static class SelfWallet {
         /** 自托管钱包私钥/助记词加密密钥（AES-GCM，PBKDF2 派生；仅 Mock/测试网，生产用 KMS/HSM） */
         private String encryptSecret;
+    }
+
+    /** 提现冷热分流配置 */
+    @Data
+    public static class Withdraw {
+        /** 冷钱包阈值（最小单位）：提现金额 >= 该值走冷钱包离线签名；低于走热钱包在线签名 */
+        private Long coldThreshold = Long.MAX_VALUE;
+        /** 冷钱包多签所需签名数（审核确认人数；真实多签需合约钱包，此处做 N 审 1 签演示） */
+        private int coldRequiredSigns = 2;
     }
 }

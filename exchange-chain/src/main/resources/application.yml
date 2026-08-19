@@ -96,6 +96,10 @@ chain:
   # 自托管钱包（用户创建/导入钱包的私钥加密；仅 Mock/测试网，生产用 KMS/HSM）
   self-wallet:
     encrypt-secret: "mock-self-wallet-encrypt-secret-0123456789"
+  # 提现冷热分流：大额冷钱包离线签名，小额热钱包在线签名
+  withdraw:
+    cold-threshold: 5000000000000000   # 最小单位，>= 该值走冷钱包(演示: 0.05 ETH/USDT 即 5e14 最小单位，设大点便于小额走热)
+    cold-required-signs: 2             # 冷钱包多签所需签名数(N 审 1 签演示)
 
 # 最简SpringDoc配置
 springdoc:

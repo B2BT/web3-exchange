@@ -34,6 +34,7 @@ import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.crypto.Credentials;
+import org.web3j.crypto.Hash;
 import org.web3j.crypto.RawTransaction;
 import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.Web3j;
@@ -196,13 +197,18 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
             return toVO(getById(withdrawId));
         }
 
-        // 3. 离线签名 + 广播
+        // 3. 离线签名 + 广播（或进入冷钱包待签）
         try {
             String txHash = broadcast(w, chain, coin);
-            this.update(new LambdaUpdateWrapper<Withdraw>()
-                    .eq(Withdraw::getId, withdrawId)
-                    .set(Withdraw::getTxHash, txHash));
-            log.info("[withdraw] 广播成功 id={} txHash={}", withdrawId, txHash);
+            if (txHash != null && txHash.startsWith("COLD_PENDING_")) {
+                // 冷钱包流程：已转待签状态，不刷新 txHash
+                log.info("[withdraw] 已进入冷钱包待签 id={}", withdrawId);
+            } else {
+                this.update(new LambdaUpdateWrapper<Withdraw>()
+                        .eq(Withdraw::getId, withdrawId)
+                        .set(Withdraw::getTxHash, txHash));
+                log.info("[withdraw] 广播成功 id={} txHash={}", withdrawId, txHash);
+            }
         } catch (Exception e) {
             log.warn("[withdraw] 广播失败 id={}: {}", withdrawId, e.getMessage());
             unfreezeRollback(withdrawId, "上链失败: " + e.getMessage());
@@ -248,42 +254,136 @@ public class WithdrawServiceImpl extends ServiceImpl<WithdrawMapper, Withdraw> i
             throw new BusinessException("获取 nonce 失败: " + e.getMessage());
         }
         BigInteger gasPrice = clampGasPrice(web3j, chain);
-        boolean token = "TOKEN".equalsIgnoreCase(coin.getCoinType());
-        BigInteger gasLimit = token ? BigInteger.valueOf(100_000) : BigInteger.valueOf(21_000);
         BigInteger chainId = chain.getChainId() == null ? BigInteger.ONE : BigInteger.valueOf(chain.getChainId());
 
-        RawTransaction rawTx;
+        // 是否走冷钱包（大额）离线签名
+        boolean cold = isColdWithdrawal(w);
+        RawTransaction rawTx = buildRawTx(w, chain, coin, nonce, gasPrice);
+        if (cold) {
+            // 冷钱包：构建 unsigned tx 并存待签（不广播），返回标记
+            return prepareColdSign(w, rawTx, chainId);
+        }
+
+        // 热钱包：在线签名并广播
+        byte[] signed = TransactionEncoder.signMessage(rawTx, chainId.longValue(), credentials);
+        if (!walletService.verifySigner(signed, rawTx, chainId.longValue())) {
+            throw new BusinessException("签名自检失败，签名与热钱包私钥不符");
+        }
+        String rawHex = Numeric.toHexString(signed);
+        return doBroadcast(web3j, rawHex);
+    }
+
+    /** 是否走冷钱包（提现金额 >= 阈值）。 */
+    private boolean isColdWithdrawal(Withdraw w) {
+        Long threshold = chainProperties.getWithdraw().getColdThreshold();
+        return threshold != null && w.getRealAmount() != null && w.getRealAmount() >= threshold;
+    }
+
+    /** 构建 RawTransaction（共用：热钱包签名 与 冷钱包待签）。 */
+    private RawTransaction buildRawTx(Withdraw w, Chain chain, Coin coin, BigInteger nonce, BigInteger gasPrice) {
+        boolean token = "TOKEN".equalsIgnoreCase(coin.getCoinType());
+        BigInteger gasLimit = token ? BigInteger.valueOf(100_000) : BigInteger.valueOf(21_000);
         boolean nft = "ERC-721".equalsIgnoreCase(coin.getTokenStandard())
                 || "ERC-1155".equalsIgnoreCase(coin.getTokenStandard());
         if (token && nft) {
-            // NFT 提现：transferFrom(hotWallet, to, tokenId)，金额为 0（NFT 不转移原生价值）
             String tokenId = w.getTokenId() == null ? "0" : w.getTokenId();
             Function function = new Function("transferFrom",
-                    Arrays.asList(new Address(hotAddr), new Address(w.getToAddress()), new Uint256(new BigInteger(tokenId))),
+                    Arrays.asList(new Address(hotWalletAddr(w, chain)), new Address(w.getToAddress()), new Uint256(new BigInteger(tokenId))),
                     List.of());
             String data = FunctionEncoder.encode(function);
-            rawTx = RawTransaction.createTransaction(nonce, gasPrice, BigInteger.valueOf(150_000),
+            return RawTransaction.createTransaction(nonce, gasPrice, BigInteger.valueOf(150_000),
                     coin.getContractAddress(), BigInteger.ZERO, data);
         } else if (token) {
             Function function = new Function("transfer",
                     Arrays.asList(new Address(w.getToAddress()), new Uint256(BigInteger.valueOf(w.getRealAmount()))),
                     List.of());
             String data = FunctionEncoder.encode(function);
-            rawTx = RawTransaction.createTransaction(nonce, gasPrice, gasLimit,
+            return RawTransaction.createTransaction(nonce, gasPrice, gasLimit,
                     coin.getContractAddress(), BigInteger.ZERO, data);
         } else {
-            rawTx = RawTransaction.createEtherTransaction(nonce, gasPrice, gasLimit,
+            return RawTransaction.createEtherTransaction(nonce, gasPrice, gasLimit,
                     w.getToAddress(), BigInteger.valueOf(w.getRealAmount()));
         }
+    }
 
-        byte[] signed = TransactionEncoder.signMessage(rawTx, chainId.longValue(), credentials);
-
-        // 签名自检：重签比较 r/s，确认由热钱包私钥签名
-        if (!walletService.verifySigner(signed, rawTx, chainId.longValue())) {
-            throw new BusinessException("签名自检失败，签名与热钱包私钥不符");
+    /** 冷钱包待签地址（此处用热钱包地址占位为转出方；无本机冷私钥，离线签名由外部完成）。 */
+    private String hotWalletAddr(Withdraw w, Chain chain) {
+        try {
+            return walletService.getCredentials().getAddress();
+        } catch (Exception e) {
+            return "0x0000000000000000000000000000000000000000";
         }
+    }
 
-        String rawHex = Numeric.toHexString(signed);
+    /** 冷钱包流程：构建 unsigned tx 存为待签（状态 6），不广播。返回占位标记。 */
+    private String prepareColdSign(Withdraw w, RawTransaction rawTx, BigInteger chainId) {
+        String unsignedHex = Numeric.toHexString(TransactionEncoder.encode(rawTx));
+        // 对 raw 做签名哈希（keccak），供离线环境校验待签内容一致性
+        String signHash = Hash.sha3(unsignedHex);
+        int required = Math.max(1, chainProperties.getWithdraw().getColdRequiredSigns());
+        this.update(new LambdaUpdateWrapper<Withdraw>()
+                .eq(Withdraw::getId, w.getId())
+                .set(Withdraw::getStatus, 6)              // 6=待冷钱包签名
+                .set(Withdraw::getSignMode, 2)
+                .set(Withdraw::getColdTxData, unsignedHex)
+                .set(Withdraw::getColdSignHash, signHash)
+                .set(Withdraw::getColdSignCount, 0)
+                .set(Withdraw::getColdRequiredSigns, required));
+        log.info("[withdraw] 进入冷钱包待签 id={} signHash={} required={}",
+                w.getId(), signHash, required);
+        // 返回占位（非真实 txHash），调用方据此判断不走广播
+        return "COLD_PENDING_" + w.getId();
+    }
+
+    /** 冷钱包多签：提交一个离线签名（N 审 1 签），达到阈值后广播。 */
+    @Override
+    public WithdrawVO submitColdSignature(Long withdrawId, String signedRawHex) {
+        Withdraw w = getById(withdrawId);
+        if (w == null) {
+            throw new NotFoundException("提现单不存在: " + withdrawId);
+        }
+        if (w.getStatus() == null || w.getStatus() != 6) {
+            throw new BusinessException("当前状态不可提交冷签名: status=" + w.getStatus());
+        }
+        int required = w.getColdRequiredSigns() == null ? 1 : w.getColdRequiredSigns();
+        int count = w.getColdSignCount() == null ? 0 : w.getColdSignCount();
+        int newCount = count + 1;
+        this.update(new LambdaUpdateWrapper<Withdraw>()
+                .eq(Withdraw::getId, withdrawId)
+                .set(Withdraw::getColdSignedRaw, signedRawHex)
+                .set(Withdraw::getColdSignCount, newCount));
+        if (newCount < required) {
+            log.info("[withdraw] 冷签名收集 {}/{} id={}", newCount, required, withdrawId);
+            return toVO(getById(withdrawId));
+        }
+        // 达到阈值：广播最后一份离线签名
+        // 注：生产应在离线签名工具中校验签名的 from 地址属于冷钱包白名单；
+        //     此处信任离线工具提供的已签名 raw，按多签日志留痕。
+        Chain chain = chainService.getByChainCode(w.getChainCode());
+        Web3j web3j = chainRegistry.get(chain.getChainCode());
+        if (web3j == null) {
+            throw new BusinessException("链未注册: " + chain.getChainCode());
+        }
+        String txHash = doBroadcast(web3j, signedRawHex);
+        this.update(new LambdaUpdateWrapper<Withdraw>()
+                .eq(Withdraw::getId, withdrawId)
+                .set(Withdraw::getStatus, 3)     // 成功
+                .set(Withdraw::getTxHash, txHash));
+        log.info("[withdraw] 冷钱包广播成功 id={} txHash={}", withdrawId, txHash);
+        return toVO(getById(withdrawId));
+    }
+
+    /** 冷钱包：待签名提现清单（status=6 的待离线签名大额提现）。 */
+    @Override
+    public List<WithdrawVO> listColdPending() {
+        return this.lambdaQuery()
+                .eq(Withdraw::getStatus, 6)
+                .orderByAsc(Withdraw::getId)
+                .list().stream().map(this::toVO).toList();
+    }
+
+    /** 广播已签名 raw tx，返回 txHash。 */
+    private String doBroadcast(Web3j web3j, String rawHex) {
         EthSendTransaction resp;
         try {
             resp = web3j.ethSendRawTransaction(rawHex).send();

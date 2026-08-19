@@ -28,6 +28,12 @@ public interface WithdrawService {
     /** 提现详情。 */
     WithdrawVO getWithdraw(Long withdrawId);
 
+    /** 冷钱包多签：提交一个离线签名（N 审 1 签），达到阈值后广播。 */
+    WithdrawVO submitColdSignature(Long withdrawId, String signedRawHex);
+
+    /** 冷钱包：待签名提现清单（status=6 的待离线签名大额提现）。 */
+    java.util.List<WithdrawVO> listColdPending();
+
     /** 用户提现记录分页。 */
     Page<WithdrawVO> pageByUser(Long userId, int page, int size);
 }

@@ -54,4 +54,18 @@ public class Withdraw extends BaseEntity {
     private String txHash;
     /** 失败原因 */
     private String failReason;
+    /** 签名模式:1=热钱包(小额在线签名),2=冷钱包(大额离线签名) */
+    private Integer signMode;
+    /** 冷钱包待签名交易(unsigned tx hex) */
+    private String coldTxData;
+    /** 待签交易签名哈希(供离线核对) */
+    private String coldSignHash;
+    /** 离线签名后的 raw tx(hex) */
+    private String coldSignedRaw;
+    /** 已收集签名数(多签确认) */
+    private Integer coldSignCount;
+    /** 需签名数阈值(多签确认) */
+    private Integer coldRequiredSigns;
+    /** 审核单ID(若走多签审核流程) */
+    private Long approvalId;
 }

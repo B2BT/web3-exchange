@@ -215,6 +215,14 @@ CREATE TABLE `t_withdraw` (
                               `freeze_ledger_id` bigint DEFAULT NULL COMMENT '冻结流水ID(关联t_asset_ledger)',
                               `tx_hash` varchar(255) DEFAULT NULL COMMENT '上链哈希',
                               `fail_reason` varchar(255) DEFAULT NULL COMMENT '失败原因',
+                              -- 冷钱包分离（大额提现走冷钱包离线签名流程） --
+                              `sign_mode` tinyint NOT NULL DEFAULT '1' COMMENT '签名模式:1=热钱包(小额在线签名),2=冷钱包(大额离线签名)',
+                              `cold_tx_data` text DEFAULT NULL COMMENT '冷钱包待签名交易(unsigned tx hex, 供离线签名)',
+                              `cold_sign_hash` varchar(255) DEFAULT NULL COMMENT '待签交易签名哈希(供离线环境核对待签内容)',
+                              `cold_signed_raw` text DEFAULT NULL COMMENT '离线签名后的raw tx(hex, 回填后广播)',
+                              `cold_sign_count` int NOT NULL DEFAULT '0' COMMENT '已收集签名数(多签确认)',
+                              `cold_required_signs` int NOT NULL DEFAULT '1' COMMENT '需签名数阈值(多签确认)',
+                              -- 待签状态:6=待冷钱包签名,7=冷签名完成待广播 --
 
                               -- 系统字段 --
                               `create_by` varchar(64) DEFAULT '' COMMENT '创建者',

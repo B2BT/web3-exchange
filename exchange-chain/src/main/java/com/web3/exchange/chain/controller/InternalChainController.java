@@ -51,4 +51,19 @@ public class InternalChainController {
                                     @RequestBody AuditRequest req) {
         return Result.success(withdrawService.audit(withdrawId, req));
     }
+
+    /** 冷钱包：待签名提现清单（管理平台拉取待离线签名的大额提现）。 */
+    @Operation(summary = "冷钱包待签名清单")
+    @GetMapping("/withdraw/cold/pending")
+    public Result<java.util.List<WithdrawVO>> coldPending() {
+        return Result.success(withdrawService.listColdPending());
+    }
+
+    /** 冷钱包：提交离线签名（N 审 1 签，达到阈值后广播）。 */
+    @Operation(summary = "提交冷钱包签名")
+    @PostMapping("/withdraw/cold/sign")
+    public Result<WithdrawVO> coldSign(@RequestParam("withdrawId") Long withdrawId,
+                                       @RequestParam("signedRawHex") String signedRawHex) {
+        return Result.success(withdrawService.submitColdSignature(withdrawId, signedRawHex));
+    }
 }
