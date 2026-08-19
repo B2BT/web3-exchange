@@ -98,7 +98,8 @@ chain:
     encrypt-secret: "mock-self-wallet-encrypt-secret-0123456789"
   # 提现冷热分流：大额冷钱包离线签名，小额热钱包在线签名
   withdraw:
-    cold-threshold: 5000000000000000   # 最小单位，>= 该值走冷钱包(演示: 0.05 ETH/USDT 即 5e14 最小单位，设大点便于小额走热)
+    # 阈值(最小单位)：>= 该值走冷钱包。USDT 6位小数 -> 500000=0.5 USDT；实际需按币精度配置
+    cold-threshold: 500000
     cold-required-signs: 2             # 冷钱包多签所需签名数(N 审 1 签演示)
 
 # 最简SpringDoc配置
