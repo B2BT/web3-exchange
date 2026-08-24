@@ -36,11 +36,14 @@ public class ChainController {
     private final DepositService depositService;
     private final WithdrawService withdrawService;
     private final RiskClient riskClient;
+    private final com.web3.exchange.chain.reconcil.ChainBalanceReconciler chainReconciler;
 
-    public ChainController(DepositService depositService, WithdrawService withdrawService, RiskClient riskClient) {
+    public ChainController(DepositService depositService, WithdrawService withdrawService, RiskClient riskClient,
+                           com.web3.exchange.chain.reconcil.ChainBalanceReconciler chainReconciler) {
         this.depositService = depositService;
         this.withdrawService = withdrawService;
         this.riskClient = riskClient;
+        this.chainReconciler = chainReconciler;
     }
 
     @Operation(summary = "查询用户充币地址（无则自动生成 BIP44 派生地址）")
@@ -121,5 +124,11 @@ public class ChainController {
     public Result<WithdrawVO> withdrawAudit(@PathVariable("id") Long id,
                                             @RequestBody AuditRequest req) {
         return Result.success(withdrawService.audit(id, req));
+    }
+
+    @Operation(summary = "链上钱包余额核对（对账扩展：查热钱包链上原生币余额）")
+    @GetMapping("/reconcile/chain/{chainCode}")
+    public Result<com.web3.exchange.chain.reconcil.ChainBalanceReconciler.ReconcilReport> chainReconcile(@PathVariable("chainCode") String chainCode) {
+        return Result.success(chainReconciler.reconcileRaw(chainCode));
     }
 }
