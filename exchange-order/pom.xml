@@ -30,6 +30,11 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+        <!-- Feign Apache HttpClient：连接池+keep-alive，降低跨服务调用连接开销(优化写路径) -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-httpclient</artifactId>
+        </dependency>
         <!-- Feign 负载均衡（lb://exchange-asset） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

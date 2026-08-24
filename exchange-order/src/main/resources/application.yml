@@ -4,10 +4,10 @@ server:
   # Tomcat 线程池调优（高并发）：工作线程 + 等待队列 + 连接数
   tomcat:
     threads:
-      max: 300        # 最大工作线程（默认200 → 调高处理并发）
-      min-spare: 20   # 常驻最小线程
-    accept-count: 200 # 等待队列长度（超时排队，避免高峰直接拒绝）
-    max-connections: 10000 # 最大并发连接
+      max: 400        # 最大工作线程（300→400，配合高并发写入）
+      min-spare: 30   # 常驻最小线程
+    accept-count: 300 # 等待队列长度（200→300，更多排队缓冲）
+    max-connections: 15000 # 最大并发连接
     connection-timeout: 10000
 
 spring:
@@ -29,12 +29,12 @@ spring:
     username: root
     password: root
 
-    # 连接池配置（调优：max-active 20→50 应对峰值连接）
+    # 连接池配置（调优：max-active 50→100 应对峰值写并发）
     druid:
-      initial-size: 10
-      min-idle: 10
-      max-active: 50
-      max-wait: 60000
+      initial-size: 20
+      min-idle: 20
+      max-active: 100
+      max-wait: 30000
       time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000
       validation-query: SELECT 1
@@ -68,6 +68,9 @@ mybatis-plus:
 
 # OpenFeign
 feign:
+  httpclient:
+    # 启用 Apache HttpClient 连接池（keep-alive 复用，降低每次跨服务冻结的连接开销）
+    enabled: true
   client:
     config:
       default:
