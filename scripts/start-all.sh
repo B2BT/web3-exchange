@@ -4,7 +4,7 @@ export JAVA_HOME=/Users/yongzx/Library/Java/JavaVirtualMachines/temurin-17.0.17/
 export LOG_PATH=/Users/yongzx/logs
 cd /Users/yongzx/IdeaProjects/web3-exchange
 
-SERVICES="user:8102 auth:8101 order:8104 asset:8103 market:8106 chain:8105 notify:8107 monitor:8108 admin:8109 margin:8110 staking:8112 risk:8114 ticket:8116 futures:8117 gateway:8080"
+SERVICES="auth:8102 user:8101 order:8104 asset:8103 market:8106 chain:8105 notify:8107 monitor:8108 admin:8109 margin:8110 staking:8112 risk:8114 ticket:8116 futures:8117 gateway:8080"
 
 for entry in $SERVICES; do
   mod="${entry%%:*}"
