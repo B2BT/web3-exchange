@@ -100,6 +100,13 @@ logging:
 
 # 分布式链路追踪（Micrometer Tracing → Zipkin）
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus   # 暴露 Prometheus 指标
+  endpoint:
+    health:
+      show-details: always
   tracing:
     sampling:
       probability: 1.0   # 全采样（演示/排查场景；生产可按需降低如0.1）

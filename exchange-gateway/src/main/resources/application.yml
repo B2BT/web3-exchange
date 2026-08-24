@@ -214,6 +214,13 @@ jwt:
 
 # 分布式链路追踪（Micrometer Tracing → Zipkin）
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus   # 暴露 Prometheus 指标
+  endpoint:
+    health:
+      show-details: always
   tracing:
     sampling:
       probability: 1.0

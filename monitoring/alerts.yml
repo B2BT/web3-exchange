@@ -1,0 +1,33 @@
+# Prometheus 告警规则
+groups:
+  - name: web3-exchange-alerts
+    rules:
+      # 服务宕机告警：5 分钟内无上报即 UP==0（DOWN）
+      - alert: ServiceDown
+        expr: up{job="web3-exchange"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "服务宕机 {{ $labels.instance }}"
+          description: "服务 {{ $labels.instance }} 已 1 分钟无上报"
+
+      # 内存使用高告警（JVM 堆使用率 > 85% 持续 2 分钟）
+      - alert: HighMemoryUsage
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap", job="web3-exchange"} > 0.85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM 堆使用率高 {{ $labels.instance }}"
+          description: "实例 {{ $labels.instance }} JVM 堆使用率 > 85%"
+
+      # 高并发请求量（http 请求速率 > 100/s 持续 1 分钟）
+      - alert: HighRequestRate
+        expr: sum(rate(http_server_requests_seconds_count{job="web3-exchange"}[1m])) > 100
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "请求速率过高 {{ $labels.instance }}"
+          description: "实例 {{ $labels.instance }} 请求速率 > 100/s"

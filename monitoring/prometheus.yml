@@ -1,0 +1,28 @@
+# Prometheus 配置：抓取 web3-exchange 各服务 /actuator/prometheus 指标
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# 告警规则
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []   # Alertmanager 后续接入（演示阶段仅记录告警状态）
+
+scrape_configs:
+  - job_name: 'web3-exchange'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - 'host.docker.internal:8106'   # market
+          - 'host.docker.internal:8104'   # order
+          - 'host.docker.internal:8103'   # asset
+          - 'host.docker.internal:8102'   # auth
+          - 'host.docker.internal:8101'   # gateway
+          - 'host.docker.internal:8105'   # chain
+          - 'host.docker.internal:8117'   # futures
+        labels:
+          env: local
