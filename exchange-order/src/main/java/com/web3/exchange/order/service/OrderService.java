@@ -52,6 +52,19 @@ public class OrderService {
     private final RiskClient riskClient;
     private final TransactionTemplate transactionTemplate;
 
+    /** 读路径缓存：盘口深度（短期，覆盖行情轮询；盘口变化频繁但300ms内可接受） */
+    private final com.github.benmanes.caffeine.cache.Cache<String, DepthVO> depthCache =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .expireAfterWrite(java.time.Duration.ofMillis(300))
+                    .maximumSize(512)
+                    .build();
+    /** 读路径缓存：最近成交（DB读，2s内可接受，避免高频查询打到DB） */
+    private final com.github.benmanes.caffeine.cache.Cache<String, List<TradeVO>> recentTradesCache =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .expireAfterWrite(java.time.Duration.ofSeconds(2))
+                    .maximumSize(512)
+                    .build();
+
     public OrderService(SymbolService symbolService,
                         OrderCoinService coinService,
                         OrderMapper orderMapper,
@@ -363,15 +376,31 @@ public class OrderService {
         return list.stream().map(this::toTradeVO).toList();
     }
 
-    /** 某交易对内存盘口深度（公开只读行情，经 MatchingEngine 聚合）。 */
+    /** 某交易对内存盘口深度（公开只读行情，经 MatchingEngine 聚合；Caffeine 300ms 缓存降低重复聚合）。 */
     public DepthVO getDepth(String symbol, int limit) {
-        return matchingEngine.depth(symbol, limit);
+        String key = symbol + ":" + limit;
+        DepthVO cached = depthCache.getIfPresent(key);
+        if (cached != null) {
+            return cached;
+        }
+        DepthVO d = matchingEngine.depth(symbol, limit);
+        if (d != null) {
+            depthCache.put(key, d);
+        }
+        return d;
     }
 
-    /** 某交易对最近成交（t_trade 按 trade_time 降序取前 limit 条）。 */
+    /** 某交易对最近成交（t_trade 按 trade_time 降序取前 limit 条；Caffeine 2s 缓存避免高频打 DB）。 */
     public List<TradeVO> listRecentTrades(String symbol, int limit) {
+        String key = symbol + ":" + limit;
+        List<TradeVO> cached = recentTradesCache.getIfPresent(key);
+        if (cached != null) {
+            return cached;
+        }
         List<Trade> list = tradeMapper.selectRecentBySymbol(symbol, limit);
-        return list.stream().map(this::toTradeVO).toList();
+        List<TradeVO> vos = list.stream().map(this::toTradeVO).toList();
+        recentTradesCache.put(key, vos);
+        return vos;
     }
 
     /**
