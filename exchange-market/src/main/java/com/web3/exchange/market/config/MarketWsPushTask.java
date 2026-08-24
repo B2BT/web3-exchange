@@ -27,6 +27,9 @@ public class MarketWsPushTask {
         this.handler = handler;
     }
 
+    /** 上次推送内容快照（增量推送：内容未变化则跳过，避免全量重复推送）。key = sessionId+"|"+subKey */
+    private final java.util.concurrent.ConcurrentHashMap<String, String> lastPushed = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Scheduled(fixedRate = 1000)
     public void push() {
         for (Map.Entry<WebSocketSession, Set<String>> entry : handler.subscriptions().entrySet()) {
@@ -49,7 +52,16 @@ public class MarketWsPushTask {
                     } else {
                         continue;
                     }
+                    // 增量推送：内容与上次相同则跳过（天然合并，降带宽/客户端解析）
+                    String snapKey = session.getId() + "|" + key;
+                    String prev = lastPushed.get(snapKey);
+                    if (payload != null && payload.equals(prev)) {
+                        continue;
+                    }
                     handler.send(session, payload);
+                    if (payload != null) {
+                        lastPushed.put(snapKey, payload);
+                    }
                 } catch (Exception e) {
                     log.warn("[market-ws] 推送失败 sessionId={} key={} err={}",
                             session.getId(), key, e.getMessage());
