@@ -12,6 +12,7 @@ import com.web3.exchange.risk.service.RiskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,5 +54,11 @@ public class InternalRiskController {
     @PostMapping("/login/record")
     public Result<LoginLog> recordLogin(@Valid @RequestBody LoginRecordRequest req) {
         return Result.success(riskService.recordLogin(req));
+    }
+
+    @Operation(summary = "AML黑名单清单")
+    @GetMapping("/aml/blacklist")
+    public Result<java.util.List<com.web3.exchange.risk.entity.AmlBlacklist>> amlBlacklist() {
+        return Result.success(((com.web3.exchange.risk.service.impl.RiskServiceImpl) riskService).listBlacklist());
     }
 }

@@ -15,9 +15,11 @@ import com.web3.exchange.risk.entity.AntiPhishing;
 import com.web3.exchange.risk.entity.LoginLog;
 import com.web3.exchange.risk.entity.RiskRule;
 import com.web3.exchange.risk.entity.WithdrawVerify;
+import com.web3.exchange.risk.entity.AmlBlacklist;
 import com.web3.exchange.risk.mapper.AntiPhishingMapper;
 import com.web3.exchange.risk.mapper.LoginLogMapper;
 import com.web3.exchange.risk.mapper.RiskRuleMapper;
+import com.web3.exchange.risk.mapper.AmlBlacklistMapper;
 import com.web3.exchange.risk.mapper.WithdrawVerifyMapper;
 import com.web3.exchange.risk.service.RiskService;
 import lombok.extern.slf4j.Slf4j;
@@ -44,15 +46,17 @@ public class RiskServiceImpl implements RiskService {
     private final AntiPhishingMapper phishingMapper;
     private final LoginLogMapper loginLogMapper;
     private final WithdrawVerifyMapper verifyMapper;
+    private final AmlBlacklistMapper amlBlacklistMapper;
     private final RiskProperties props;
 
     public RiskServiceImpl(RiskRuleMapper ruleMapper, AntiPhishingMapper phishingMapper,
                            LoginLogMapper loginLogMapper, WithdrawVerifyMapper verifyMapper,
-                           RiskProperties props) {
+                           AmlBlacklistMapper amlBlacklistMapper, RiskProperties props) {
         this.ruleMapper = ruleMapper;
         this.phishingMapper = phishingMapper;
         this.loginLogMapper = loginLogMapper;
         this.verifyMapper = verifyMapper;
+        this.amlBlacklistMapper = amlBlacklistMapper;
         this.props = props;
     }
 
@@ -126,6 +130,17 @@ public class RiskServiceImpl implements RiskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public WithdrawRiskResult preCheckWithdraw(WithdrawRiskRequest req) {
+        // AML 制裁名单校验：提现收款地址命中制裁/黑名单地址则拦截
+        if (req.getToAddress() != null && !req.getToAddress().isBlank()) {
+            AmlBlacklist hit = matched("SANCTION_ADDRESS", req.getToAddress().toLowerCase());
+            if (hit != null) {
+                WithdrawRiskResult r = new WithdrawRiskResult();
+                r.setPass(false);
+                r.setNeedVerify(false);
+                r.setReason("提现地址命中AML制裁/黑名单: " + (hit.getReason() == null ? "sanction" : hit.getReason()));
+                return r;
+            }
+        }
         // 反钓鱼码校验：用户已设置则必须匹配
         AntiPhishing ap = getPhishing(req.getUserId());
         if (ap != null && !ap.getPhrase().equals(req.getPhrase())) {
@@ -212,6 +227,37 @@ public class RiskServiceImpl implements RiskService {
         r.setPass(false);
         r.setReason(reason);
         return r;
+    }
+
+    /** AML：按类型+值命中黑名单（生效条目）。 */
+    private AmlBlacklist matched(String type, String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return amlBlacklistMapper.selectOne(new LambdaQueryWrapper<AmlBlacklist>()
+                .eq(AmlBlacklist::getMatchType, type)
+                .eq(AmlBlacklist::getMatchValue, value)
+                .eq(AmlBlacklist::getStatus, 1)
+                .last("limit 1"));
+    }
+
+    /** AML：查询黑名单清单。 */
+    public List<AmlBlacklist> listBlacklist() {
+        return amlBlacklistMapper.selectList(new LambdaQueryWrapper<AmlBlacklist>()
+                .orderByDesc(AmlBlacklist::getId));
+    }
+
+    /** AML：新增黑名单条目。 */
+    public AmlBlacklist addBlacklist(String type, String value, String reason) {
+        AmlBlacklist b = new AmlBlacklist();
+        b.setMatchType(type);
+        b.setMatchValue(value);
+        b.setReason(reason);
+        b.setSource("admin");
+        b.setStatus(1);
+        b.setCreateTime(LocalDateTime.now());
+        amlBlacklistMapper.insert(b);
+        return b;
     }
 
     private RiskRule enabledRule(String type) {
