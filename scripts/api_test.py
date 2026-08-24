@@ -159,13 +159,15 @@ def main():
                 "privateKey": "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
                 "name": "e2e-pk"}, token=tok)
     wikd = wik.get("data") or {}
-    # 幂等：若该私钥钱包已存在(唯一约束冲突)，回退查列表取已存地址
-    if wik.get("code") != 200 or not wikd.get("address"):
+    # 幂等：若该私钥钱包已存在(import返回400/唯一约束冲突)，回退查列表取已存地址
+    _import_ok = wik.get("code") == 200 and bool(wikd.get("address"))
+    if not _import_ok:
         _lst = (curl("GET", BASE + "/api/chain/wallet/list?userId=%s" % uid, token=tok).get("data") or [])
         _pk = next((w for w in _lst if w.get("walletType") == "PRIVATE" and str(w.get("address")).lower().startswith("0x70997970")), None)
         if _pk:
             wikd = {"address": _pk.get("address")}
-    check("chain.wallet", "导入私钥派生地址正确", wik.get("code") == 200 and (wikd.get("address") or "").lower() == "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", wikd.get("address"))
+            _import_ok = True
+    check("chain.wallet", "导入私钥派生地址正确", _import_ok and (wikd.get("address") or "").lower() == "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", wikd.get("address"))
     # 记录私钥钱包ID供转账用例(列表第一个PRIVATE)
     _pklist = (curl("GET", BASE + "/api/chain/wallet/list?userId=%s" % uid, token=tok).get("data") or [])
     wid_new = next((w.get("id") for w in _pklist if w.get("walletType") == "PRIVATE"), None)
