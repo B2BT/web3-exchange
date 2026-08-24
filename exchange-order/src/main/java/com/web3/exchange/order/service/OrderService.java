@@ -52,6 +52,11 @@ public class OrderService {
     private final RiskClient riskClient;
     private final TransactionTemplate transactionTemplate;
 
+    /** Redis L2 分布式缓存（跨实例共享，多副本场景)；本地 Caffeine 为 L1。字段注入避免改动主构造器。 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
     /** 读路径缓存：盘口深度（短期，覆盖行情轮询；盘口变化频繁但300ms内可接受） */
     private final com.github.benmanes.caffeine.cache.Cache<String, DepthVO> depthCache =
             com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
@@ -376,18 +381,48 @@ public class OrderService {
         return list.stream().map(this::toTradeVO).toList();
     }
 
-    /** 某交易对内存盘口深度（公开只读行情，经 MatchingEngine 聚合；Caffeine 300ms 缓存降低重复聚合）。 */
+    /** 某交易对内存盘口深度（L1 Caffeine 300ms + L2 Redis，多副本共享；降重复聚合）。 */
     public DepthVO getDepth(String symbol, int limit) {
         String key = symbol + ":" + limit;
+        // L1 本地缓存
         DepthVO cached = depthCache.getIfPresent(key);
         if (cached != null) {
             return cached;
         }
-        DepthVO d = matchingEngine.depth(symbol, limit);
+        // L2 Redis（跨实例共享）
+        DepthVO d = getRedisDepth(key);
         if (d != null) {
             depthCache.put(key, d);
+            return d;
+        }
+        // 源：撮合引擎聚合
+        d = matchingEngine.depth(symbol, limit);
+        if (d != null) {
+            depthCache.put(key, d);
+            putRedisDepth(key, d);
         }
         return d;
+    }
+
+    /** Redis 读取盘口（L2）。 */
+    private DepthVO getRedisDepth(String key) {
+        try {
+            if (redisTemplate == null) return null;
+            String json = redisTemplate.opsForValue().get("depth:" + key);
+            return json == null ? null : objectMapper.readValue(json, DepthVO.class);
+        } catch (Exception e) {
+            return null; // 缓存失效降级，不影响主链路
+        }
+    }
+
+    /** Redis 写入盘口（L2，400ms TTL 略高于 L1 300ms）。 */
+    private void putRedisDepth(String key, DepthVO d) {
+        try {
+            if (redisTemplate == null) return;
+            redisTemplate.opsForValue().set("depth:" + key, objectMapper.writeValueAsString(d),
+                    java.time.Duration.ofMillis(400));
+        } catch (Exception ignored) {
+        }
     }
 
     /** 某交易对最近成交（t_trade 按 trade_time 降序取前 limit 条；Caffeine 2s 缓存避免高频打 DB）。 */

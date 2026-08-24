@@ -12,15 +12,19 @@
 - 现货：`MatchingEngine` (exchange-order)
 - 合约：`FuturesMatchingEngine` (exchange-futures)
 
-## 二、读路径缓存（本次新增）
+## 二、读路径缓存（L1 Caffeine + L2 Redis 分布式缓存）
 
-`OrderService` 加 Caffeine 缓存：
-| 接口 | 缓存 | 原因 |
-|------|------|------|
-| `GET /api/order/depth` | 300ms | 盘口高频轮询，避免重复内存聚合 |
-| `GET /api/order/recent-trades` | 2s | DB 读，避免高频查询打 DB |
+`OrderService` 加两级读缓存，多副本场景下经 Redis 跨实例共享：
+| 接口 | L1 本地 Caffeine | L2 Redis |
+|------|----------------|----------|
+| `GET /api/order/depth` | 300ms | 400ms TTL（`depth:<symbol>:<limit>`） |
+| `GET /api/order/recent-trades` | 2s | —（本地即可） |
 
-（Caffeine 已存在于 exchange-order pom）
+- **L1**：本地 Caffeine（最快，单实例命中）
+- **L2**：Redis（多副本共享，HPA 扩到多实例时避免各实例各自打 DB/撮合）
+- 降级：Redis 不可用则返回 null → 走本地/源，不影响主链路
+- 验证：调 depth → Redis 出现 `depth:BTC/USDT:20` key，JSON 正常
+
 
 ## 三、wrk 压测结果（200 并发 / 8-10s，8 线程）
 
