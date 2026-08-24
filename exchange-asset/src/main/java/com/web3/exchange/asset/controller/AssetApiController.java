@@ -8,6 +8,7 @@ import com.web3.exchange.common.asset.dto.LedgerVO;
 import com.web3.exchange.common.model.PageData;
 import com.web3.exchange.common.model.Result;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.web3.exchange.asset.service.impl.ReconciliationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -30,12 +31,14 @@ public class AssetApiController {
     private final AccountService accountService;
     private final AssetAddressService assetAddressService;
     private final LedgerService ledgerService;
+    private final ReconciliationService reconciliationService;
 
     public AssetApiController(AccountService accountService, AssetAddressService assetAddressService,
-                              LedgerService ledgerService) {
+                              LedgerService ledgerService, ReconciliationService reconciliationService) {
         this.accountService = accountService;
         this.assetAddressService = assetAddressService;
         this.ledgerService = ledgerService;
+        this.reconciliationService = reconciliationService;
     }
 
     /**
@@ -79,5 +82,15 @@ public class AssetApiController {
                                                  @RequestParam(value = "size", defaultValue = "20") int size) {
         Page<LedgerVO> voPage = ledgerService.pageLedgersByUserId(userId, page, size);
         return Result.success(PageData.of(voPage));
+    }
+
+    /**
+     * 资金对账（账实核对）：① total==available+frozen 不变式；② 账户当前值==最新流水 after 值。
+     * 返回核对账户数 + 不平衡项明细，供审计/运维发现资金偏差。
+     */
+    @Operation(summary = "资金对账（账实核对）")
+    @GetMapping("/reconcile")
+    public Result<ReconciliationService.ReconcileReport> reconcile() {
+        return Result.success(reconciliationService.runReconcile());
     }
 }

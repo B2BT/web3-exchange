@@ -5,6 +5,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 资产模块启动类（exchange-asset，端口 8103）。
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Import;
 @SpringBootApplication
 @Import(GlobalExceptionHandler.class)
 @MapperScan("com.web3.exchange.asset.mapper")
+@EnableScheduling
 public class AssetApplication {
     public static void main(String[] args) {
         SpringApplication.run(AssetApplication.class, args);
