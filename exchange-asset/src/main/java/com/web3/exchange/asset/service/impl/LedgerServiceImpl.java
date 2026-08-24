@@ -268,6 +268,9 @@ public class LedgerServiceImpl extends ServiceImpl<LedgerMapper, Ledger> impleme
             throw new BusinessException(409, "余额更新冲突，请重试");
         }
 
+        // ===== 资金变动成功：失效该用户读缓存（保证余额查询实时）=====
+        accountService.invalidate(acct.getUserId());
+
         // ===== 资金变动成功：发送 ASSET-CHANGE 事件（骨架，批次B）=====
         // 仅作事件通知补充，不参与资金主流程；发送失败由 producer 内部降级为仅记录日志，
         // 绝不抛异常回滚资金事务。注意：本方法处于事务内，发送发生在提交前；

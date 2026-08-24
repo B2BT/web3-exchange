@@ -91,6 +91,12 @@
             <artifactId>rocketmq-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- 读路径缓存（账户查询 Caffeine，资金写时失效） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- =============== 测试 =============== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

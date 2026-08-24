@@ -30,8 +30,30 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
 
     private final CoinService coinService;
 
+    /** 读路径缓存：账户余额查询（Caffeine 2s，资金写时主动失效或短TTL兜底）。 */
+    private final com.github.benmanes.caffeine.cache.Cache<String, AccountVO> balanceCache =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .expireAfterWrite(java.time.Duration.ofSeconds(2))
+                    .maximumSize(2048)
+                    .build();
+
+    /** 读路径缓存：用户全部账户列表（Caffeine 2s）。 */
+    private final com.github.benmanes.caffeine.cache.Cache<Long, List<AccountVO>> userAccountsCache =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .expireAfterWrite(java.time.Duration.ofSeconds(2))
+                    .maximumSize(2048)
+                    .build();
+
     public AccountServiceImpl(CoinService coinService) {
         this.coinService = coinService;
+    }
+
+    /** 资金变动后主动失效该用户缓存（由 LedgerService 资金操作在事务提交后调用）。 */
+    public void invalidate(Long userId) {
+        if (userId != null) {
+            balanceCache.asMap().entrySet().removeIf(e -> e.getKey().startsWith(userId + ":"));
+            userAccountsCache.invalidate(userId);
+        }
     }
 
     /**
@@ -58,19 +80,32 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
 
     @Override
     public AccountVO getBalance(Long userId, String symbol) {
+        String key = userId + ":" + symbol;
+        AccountVO cached = balanceCache.getIfPresent(key);
+        if (cached != null) {
+            return cached;
+        }
         Account account = getByUserAndSymbol(userId, symbol);
         if (account == null) {
             throw new NotFoundException("账户不存在: userId=" + userId + ", symbol=" + symbol);
         }
-        return toVO(account);
+        AccountVO vo = toVO(account);
+        balanceCache.put(key, vo);
+        return vo;
     }
 
     @Override
     public List<AccountVO> listByUser(Long userId) {
-        return list(new LambdaQueryWrapper<Account>()
+        List<AccountVO> cached = userAccountsCache.getIfPresent(userId);
+        if (cached != null) {
+            return cached;
+        }
+        List<AccountVO> vos = list(new LambdaQueryWrapper<Account>()
                         .eq(Account::getUserId, userId)
                         .orderByAsc(Account::getSymbol))
                 .stream().map(this::toVO).collect(Collectors.toList());
+        userAccountsCache.put(userId, vos);
+        return vos;
     }
 
     /**

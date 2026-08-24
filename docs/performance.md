@@ -22,30 +22,39 @@
 
 （Caffeine 已存在于 exchange-order pom）
 
-## 三、wrk 压测结果（200 并发 / 10s，8 线程）
+## 三、wrk 压测结果（200 并发 / 8-10s，8 线程）
 
 | 接口 | 方式 | 吞吐(req/s) | 平均延迟 |
 |------|------|------------|---------|
 | `order/depth` | 缓存 300ms | **21,772** | 12.6ms |
 | `order/recent-trades` | 缓存 2s | **9,931** | 28.0ms |
 | `market/ticker/list` | 聚合(网关) | 9,479 | 23.1ms |
-| `asset/account` | **未缓存(DB直查)** | ***1,648*** | 102.6ms |
+| `asset/balance` | **未缓存(DB直查)** | 1,648 | 102.6ms |
+| `asset/balance` | **缓存 2s(Caffeine)** | ***31,738*** | 6.93ms |
+| `order/place`(下单) | **写路径**(冻结+撮合+落库+MQ) | **870** | 149ms |
 
 ### 结论
-- **读路径缓存显著有效**：encache depth 是未缓存对照的 **~13 倍**，recent-trades **~6 倍**
-- 未缓存 DB 直查(account)吞吐仅 1.6k，是明显瓶颈 → **下一步应对账户/资产读也加缓存**
+- **读路径缓存显著有效**：depth 未缓存对照 1.6k → 缓存后 2.1万（~13x）；asset balance 1.6k → **3.1万（~19x）**，延迟 102→7ms
+- **读快写慢是常态**：下单写路径 870 req/s（完整冻结+撮合+事务+MQ），与读 3 万形成对比——优化写需下单写吞吐（事件驱动/批量）
 
-## 四、瓶颈与建议
+## 四、资产账户读缓存（本次新增）
+
+`AccountServiceImpl` 加 Caffeine 2s 缓存（getBalance / listByUser），资金变动 `doChange` 后主动 `invalidate(userId)` 保证实时一致：
+- `getBalance` / `listByUser`：Caffeine 2s
+- 失效：`LedgerService.doChange`（所有资金变动唯一入口）事务内更新后调用
+
+## 五、瓶颈与建议
 
 ### 当前瓶颈
-1. **DB 直查读接口**（asset account / order 分页等）未缓存 → 吞吐最低
+1. **下单写路径** 870 req/s（受限于全链路事务：Feign 冻结 + 撮合 + 落库 + MQ）
 2. 未做分库分表（单 MySQL）
 
-### 建议（阶段 B）
-- asset 账户读加 Caffeine + Redis（写穿缓存）
-- 行情推送 WebSocket 增量/合并优化
-- 下单写路径：解锁写吞吐（当前写走事务+MQ，改用每币对专门线程/事件驱动）
+### 建议（阶段 B/C）
+- asset 账户读已缓存 ✅（下一步：行情/账户走 Redis 分布式缓存 + 写穿）
+- **下单写路径优化**：每交易对专用线程 + 事件驱动撮合，减少 Feign 往返
+- 行情 WebSocket 增量/合并推送
 
-## 五、归档
-- 代码：`OrderService` 读缓存（exchange-order）
+
+## 六、归档
+- 代码：`OrderService` 读缓存（exchange-order）、`AccountServiceImpl` 读缓存（exchange-asset）
 - 相关 `docs/production-gap.md`、`docs/performance.md`

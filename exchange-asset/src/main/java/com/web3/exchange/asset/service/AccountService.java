@@ -34,5 +34,10 @@ public interface AccountService extends IService<Account> {
      */
     Account lockByUserAndSymbol(Long userId, String symbol);
 
+    /**
+     * 资金变动后主动失效该用户读缓存（Caffeine）。资金操作事务提交后调用。
+     */
+    void invalidate(Long userId);
+
     AccountVO toVO(Account account);
 }
